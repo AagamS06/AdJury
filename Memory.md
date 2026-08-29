@@ -16,7 +16,9 @@ An **AI content-critique SaaS**. Businesses paste marketing content (ad copy, so
 
 **The 5 jurors:** Brand Voice Guardian · Compliance & Legal Flagger · Target Audience Fit · SEO / Discoverability · "Would I Stop Scrolling".
 
-**Read next:** [PRD.md](PRD.md) (what & why) → [Architecture.md](Architecture.md) (how it's built) → [Rules.md](Rules.md) (conventions) → [Phases.md](Phases.md) (plan) → [Design.md](Design.md) (look & feel).
+**Read next:** [PRD.md](PRD.md) (what & why) → [Architecture.md](Architecture.md) (how it's built) → [Rules.md](Rules.md) (conventions) → [Phases.md](Phases.md) (plan) → [DailyPlan.md](DailyPlan.md) (per-day tasks) → [Design.md](Design.md) (look & feel).
+
+> **🤖 Automated daily build:** a cloud routine runs **every day at 4:30am (Australia/Sydney)** on **Opus 4.8**. Each run executes the **next unchecked day** in [DailyPlan.md](DailyPlan.md) and **opens a PR** (never merges, never touches secrets). Review and merge PRs to advance. Manage/disable at https://claude.ai/code/routines.
 
 ---
 

@@ -4,7 +4,7 @@
 >
 > **Keep this file current.** Update the status tables at the end of every work session (per [Rules.md](Rules.md) §9).
 >
-> **Last updated:** 2026-08-29 (Phase 1 scaffold verified)
+> **Last updated:** 2026-08-30 (Day 2 — DB data-access layer)
 
 ---
 
@@ -48,13 +48,14 @@ An **AI content-critique SaaS**. Businesses paste marketing content (ad copy, so
 - **Provider-abstracted model client** — `src/lib/ai/client.ts`: Anthropic when `AI_API_KEY` set, deterministic **offline mock** otherwise (so tests/demo run with no key).
 - **Scoring & verdict** — `src/lib/scoring.ts`: weighted aggregate + compliance-veto verdict logic.
 - **DB migration** — `supabase/migrations/0001_init.sql`: full schema + RLS policies; `seed.sql` dev data.
-- **End-to-end proof** — `npm run demo` (sample ad copy → 5 jurors → JSON in console) and `npm test` (12 tests) both green; `npm run typecheck` clean.
+- **End-to-end proof** — `npm run demo` (sample ad copy → 5 jurors → JSON in console) and `npm test` both green; `npm run typecheck` clean.
+- **DB data-access layer (Day 2)** — `src/types/db.ts` (hand-written row types mirroring the migration) and `src/lib/db/queries.ts`: typed helpers for companies, users, brand_profiles, and reviews/persona_scores (`insertReviewWithScores` with rollback, `getReviewById` with tenancy scoping, `listReviewsByCompany`). `scripts/db-smoke.ts` (+ `npm run db:smoke`) inserts and reads back a review against a dev Supabase, or prints manual steps + exits 0 when no keys are present. Unit test for the pure juror→row mapper. `npm test` now **14 tests** green.
 
 ### 🚧 In progress / next up (finish Phase 1 → Phase 2)
-- [ ] **Owner to add real keys** in `.env.local` (Supabase + `AI_API_KEY`) to run against the live model instead of the mock.
-- [ ] Apply the migration to a Supabase project; wire up email/password **auth + role provisioning** (`users` row on signup).
+- [ ] **Owner to add real keys** in `.env.local` (Supabase + `AI_API_KEY`) to run the live model and `npm run db:smoke` against a real Supabase.
+- [ ] Apply the migration to a Supabase project; wire up email/password **auth + role provisioning** (`users` row on signup) — Day 3.
 - [ ] Light calibration of persona prompts against real model output once keys are in.
-- [ ] Begin Phase 2: `POST /api/reviews` endpoint (persist `reviews` + `persona_scores`), submission UI, scorecard UI, review history.
+- [ ] Continue Phase 2: role-based access (Day 4), `POST /api/reviews` endpoint (persist via the new queries layer), submission UI, scorecard UI, review history.
 
 ### ⏭️ Later phases (not started)
 - Phase 2 — Core review engine (submit UI, review endpoint, scorecard, history).

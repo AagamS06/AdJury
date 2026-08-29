@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "demo": "tsx scripts/demo-review.ts"
+    "demo": "tsx scripts/demo-review.ts",
+    "db:smoke": "tsx scripts/db-smoke.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",

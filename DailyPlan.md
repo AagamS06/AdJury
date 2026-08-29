@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-08-29
+> **Status:** Active · **Last updated:** 2026-08-30
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -21,9 +21,9 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Next.js + TS + Tailwind scaffold; Zod juror schema; 5 persona prompts + rubrics; orchestrator; scoring + compliance veto; provider-abstracted client with offline mock; Supabase migration + RLS; e2e demo + Vitest suite.
 - DoD: `npm test` (12 tests) and `npm run demo` green; typecheck clean. **Completed 2026-08-29.**
 
-### Day 2 — DB data-access layer
-- [ ] Implement `src/lib/db/queries.ts`: typed helpers for companies, users, brand_profiles, reviews, persona_scores (insert review + scores, fetch by id, list by company).
-- [ ] Add a `scripts/db-smoke.ts` that inserts and reads a review (runs against a dev Supabase if `.env.local` present; otherwise documents the manual steps).
+### Day 2 — DB data-access layer ✅
+- [x] Implement `src/lib/db/queries.ts`: typed helpers for companies, users, brand_profiles, reviews, persona_scores (insert review + scores, fetch by id, list by company).
+- [x] Add a `scripts/db-smoke.ts` that inserts and reads a review (runs against a dev Supabase if `.env.local` present; otherwise documents the manual steps).
 - DoD: queries typecheck; smoke script documented/working; no secrets committed.
 
 ### Day 3 — Auth foundation

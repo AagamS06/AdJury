@@ -4,7 +4,7 @@
 >
 > **Keep this file current.** Update the status tables at the end of every work session (per [Rules.md](Rules.md) §9).
 >
-> **Last updated:** 2026-08-29
+> **Last updated:** 2026-08-29 (Phase 1 scaffold verified)
 
 ---
 
@@ -33,21 +33,26 @@ An **AI content-critique SaaS**. Businesses paste marketing content (ad copy, so
 
 ## 3. Current Status
 
-**Phase:** 1 (Foundation & personas) — *just beginning.*
+**Phase:** 1 (Foundation & personas) — *core scaffold complete & verified.*
 
 ### ✅ Done
 - Project documentation set authored: PRD, Architecture, Rules, Phases, Design, this Memory doc, and README.
 - Core concept, 5-juror definitions, scoring rubric anchors, and JSON output contract specified in [PRD.md](PRD.md).
 - Tech stack, data model, folder structure, and AI orchestration flow defined in [Architecture.md](Architecture.md).
+- **Project scaffolded** (Next.js 15 + TS + Tailwind): `package.json`, `tsconfig`, `next/tailwind/postcss` configs, `.env.example`, `.gitignore`.
+- **Zod juror schema** implemented — `src/lib/schema/juror.ts` (the contract from PRD §7).
+- **5 persona system prompts + rubrics** — `src/lib/ai/personas/*` (base + one file per juror).
+- **AI orchestrator** — `src/lib/ai/orchestrator.ts`: fan-out to 5 jurors, parse + Zod-validate (retry once), single-juror failures degrade gracefully.
+- **Provider-abstracted model client** — `src/lib/ai/client.ts`: Anthropic when `AI_API_KEY` set, deterministic **offline mock** otherwise (so tests/demo run with no key).
+- **Scoring & verdict** — `src/lib/scoring.ts`: weighted aggregate + compliance-veto verdict logic.
+- **DB migration** — `supabase/migrations/0001_init.sql`: full schema + RLS policies; `seed.sql` dev data.
+- **End-to-end proof** — `npm run demo` (sample ad copy → 5 jurors → JSON in console) and `npm test` (12 tests) both green; `npm run typecheck` clean.
 
-### 🚧 In progress / next up (Phase 1)
-- [ ] Confirm the stack with the owner (Next.js + Supabase + Claude Haiku) or adjust.
-- [ ] Scaffold the repo (Next.js + TS + Tailwind) per [Architecture.md](Architecture.md) §4.
-- [ ] Write the 5 persona system prompts in `src/lib/ai/personas/*` and refine each rubric (1/10 vs 10/10 detail).
-- [ ] Implement the Zod juror schema in `src/lib/schema/juror.ts`.
-- [ ] Write the Supabase migration for the DB schema; set up auth + roles.
-- [ ] Create `.env.example` (no secrets).
-- [ ] Build the end-to-end test: sample ad copy → 5 jurors → structured JSON in console.
+### 🚧 In progress / next up (finish Phase 1 → Phase 2)
+- [ ] **Owner to add real keys** in `.env.local` (Supabase + `AI_API_KEY`) to run against the live model instead of the mock.
+- [ ] Apply the migration to a Supabase project; wire up email/password **auth + role provisioning** (`users` row on signup).
+- [ ] Light calibration of persona prompts against real model output once keys are in.
+- [ ] Begin Phase 2: `POST /api/reviews` endpoint (persist `reviews` + `persona_scores`), submission UI, scorecard UI, review history.
 
 ### ⏭️ Later phases (not started)
 - Phase 2 — Core review engine (submit UI, review endpoint, scorecard, history).

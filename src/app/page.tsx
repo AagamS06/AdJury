@@ -81,6 +81,12 @@ function AuthNav({ session }: { session: SessionContext | null }) {
         Signed in as{" "}
         <span className="font-medium text-body">{session.email}</span>
       </span>
+      <Link
+        href="/dashboard"
+        className="rounded-sm bg-royal px-3 py-1.5 font-semibold text-white hover:bg-royal-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-bright"
+      >
+        Dashboard
+      </Link>
       <form action={signOutAction}>
         <button
           type="submit"

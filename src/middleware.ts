@@ -1,13 +1,24 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  DEFAULT_AUTHED_PATH,
+  LOGIN_PATH,
+  isAuthPage,
+  isProtectedPath,
+} from "@/lib/auth/access";
 
 /**
- * Session-refresh middleware (Day 3 — auth foundation).
+ * Session-refresh + coarse route-gate middleware (Day 3 refresh, Day 4 gate).
  *
- * Supabase access tokens are short-lived; this refreshes them on every request
- * and writes the rotated cookies back so a signed-in session PERSISTS across
- * navigations and server renders. It only refreshes — route protection
- * (redirecting unauthenticated users, gating the dashboard) lands in Day 4.
+ * Two jobs:
+ *  1. Refresh short-lived Supabase access tokens on every request and write the
+ *     rotated cookies back so a signed-in session PERSISTS across navigations.
+ *  2. Coarse route protection: bounce anonymous traffic away from protected
+ *     URLs to `/login`, and signed-in users away from the auth pages back to
+ *     the app. This is the first line only — role checks (admin-only brand /
+ *     team routes) are enforced server-side in the page guards (`guard.ts`),
+ *     since the role lives in the DB, not the token. Neither layer trusts the
+ *     client (Rules.md §5).
  *
  * If the public Supabase env vars are absent (e.g. this cloud build with no
  * secrets), skip silently so the app still renders; auth simply won't be wired
@@ -39,11 +50,43 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // Touch the auth state to trigger a token refresh when needed. Do not gate on
-  // the result here (that is Day 4); just let the refreshed cookies flow back.
-  await supabase.auth.getUser();
+  // Resolve the auth user (this also triggers the token refresh). We gate on
+  // presence only; the authoritative provisioned-session + role checks run in
+  // the server components.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+
+  if (!user && isProtectedPath(pathname)) {
+    return redirectPreservingCookies(request, response, LOGIN_PATH);
+  }
+
+  if (user && isAuthPage(pathname)) {
+    return redirectPreservingCookies(request, response, DEFAULT_AUTHED_PATH);
+  }
 
   return response;
+}
+
+/**
+ * Build a redirect to `pathname` while carrying over any refreshed auth cookies
+ * that were set on `response`, so a token rotation isn't lost on the redirect.
+ */
+function redirectPreservingCookies(
+  request: NextRequest,
+  response: NextResponse,
+  pathname: string,
+): NextResponse {
+  const target = request.nextUrl.clone();
+  target.pathname = pathname;
+  target.search = "";
+  const redirectResponse = NextResponse.redirect(target);
+  for (const cookie of response.cookies.getAll()) {
+    redirectResponse.cookies.set(cookie);
+  }
+  return redirectResponse;
 }
 
 export const config = {

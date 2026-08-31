@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-08-30
+> **Status:** Active · **Last updated:** 2026-08-30 (Day 3 — Auth foundation)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -26,10 +26,10 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Add a `scripts/db-smoke.ts` that inserts and reads a review (runs against a dev Supabase if `.env.local` present; otherwise documents the manual steps).
 - DoD: queries typecheck; smoke script documented/working; no secrets committed.
 
-### Day 3 — Auth foundation
-- [ ] Wire Supabase Auth (email/password); server session helper; signup provisions a `companies` row + admin `users` row.
-- [ ] Login / logout / signup pages (minimal, on-brand).
-- DoD: a new signup creates company + user rows; session persists; typecheck/tests green.
+### Day 3 — Auth foundation ✅
+- [x] Wire Supabase Auth (email/password); server session helper; signup provisions a `companies` row + admin `users` row.
+- [x] Login / logout / signup pages (minimal, on-brand).
+- DoD: a new signup creates company + user rows; session persists; typecheck/tests green. **Completed 2026-08-30.**
 
 ### Day 4 — Role-based access
 - [ ] Route protection: unauthenticated → login; gate `/(dashboard)`; admin-only guard for brand/team routes.

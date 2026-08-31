@@ -4,7 +4,7 @@
 >
 > **Keep this file current.** Update the status tables at the end of every work session (per [Rules.md](Rules.md) §9).
 >
-> **Last updated:** 2026-08-30 (Day 2 — DB data-access layer)
+> **Last updated:** 2026-08-30 (Day 3 — Auth foundation)
 
 ---
 
@@ -49,13 +49,13 @@ An **AI content-critique SaaS**. Businesses paste marketing content (ad copy, so
 - **Scoring & verdict** — `src/lib/scoring.ts`: weighted aggregate + compliance-veto verdict logic.
 - **DB migration** — `supabase/migrations/0001_init.sql`: full schema + RLS policies; `seed.sql` dev data.
 - **End-to-end proof** — `npm run demo` (sample ad copy → 5 jurors → JSON in console) and `npm test` both green; `npm run typecheck` clean.
-- **DB data-access layer (Day 2)** — `src/types/db.ts` (hand-written row types mirroring the migration) and `src/lib/db/queries.ts`: typed helpers for companies, users, brand_profiles, and reviews/persona_scores (`insertReviewWithScores` with rollback, `getReviewById` with tenancy scoping, `listReviewsByCompany`). `scripts/db-smoke.ts` (+ `npm run db:smoke`) inserts and reads back a review against a dev Supabase, or prints manual steps + exits 0 when no keys are present. Unit test for the pure juror→row mapper. `npm test` now **14 tests** green.
+- **DB data-access layer (Day 2)** — `src/types/db.ts` (hand-written row types mirroring the migration) and `src/lib/db/queries.ts`: typed helpers for companies, users, brand_profiles, and reviews/persona_scores (`insertReviewWithScores` with rollback, `getReviewById` with tenancy scoping, `listReviewsByCompany`). `scripts/db-smoke.ts` (+ `npm run db:smoke`) inserts and reads back a review against a dev Supabase, or prints manual steps + exits 0 when no keys are present. Unit test for the pure juror→row mapper.
+- **Auth foundation (Day 3)** — Supabase email/password auth wired with `@supabase/ssr` (cookie sessions). `src/lib/auth/`: SSR browser + server client factories, `session.ts` `getSessionContext()` (resolves auth user → company + role, server-side, never from the client), `provisioning.ts` `provisionCompanyForNewUser()` (signup creates a `companies` row + first **admin** `users` row with rollback, run via the service-role client to bootstrap past RLS), Zod `schema.ts`, and `actions.ts` server actions (`signInAction`/`signUpAction`/`signOutAction`). `src/middleware.ts` refreshes the session cookie so logins persist (route protection deferred to Day 4). On-brand `/login` + `/signup` pages (`src/app/(auth)/`) using Design.md tokens with labels/focus rings; the landing page shows signed-in state + sign-out. `npm test` now **22 tests** green; `npm run build` compiles.
 
 ### 🚧 In progress / next up (finish Phase 1 → Phase 2)
-- [ ] **Owner to add real keys** in `.env.local` (Supabase + `AI_API_KEY`) to run the live model and `npm run db:smoke` against a real Supabase.
-- [ ] Apply the migration to a Supabase project; wire up email/password **auth + role provisioning** (`users` row on signup) — Day 3.
+- [ ] **Owner to add real keys** in `.env.local` (Supabase + `AI_API_KEY`) to run the live model, apply the migration, and exercise signup/login end-to-end against a real Supabase project (the cloud build has no secrets, so auth is code-complete but unverified against a live DB).
 - [ ] Light calibration of persona prompts against real model output once keys are in.
-- [ ] Continue Phase 2: role-based access (Day 4), `POST /api/reviews` endpoint (persist via the new queries layer), submission UI, scorecard UI, review history.
+- [ ] Continue Phase 2: role-based access / route protection (Day 4 — gate `(dashboard)`, admin guard, redirect unauth), `POST /api/reviews` endpoint (persist via the queries layer, derive `company_id` from `getSessionContext()`), submission UI, scorecard UI, review history.
 
 ### ⏭️ Later phases (not started)
 - Phase 2 — Core review engine (submit UI, review endpoint, scorecard, history).
@@ -73,6 +73,8 @@ Record notable choices here so they aren't relitigated. Newest first.
 
 | Date | Decision | Rationale |
 |---|---|---|
+| 2026-08-30 | Add **`@supabase/ssr`** for cookie-based auth sessions (Day 3) | Standard, actively-maintained Supabase package for Next.js App Router; removes hand-rolled SSR cookie/session handling so the server can read the session and RLS applies. Sessions live in cookies (not localStorage) so they persist across server renders. |
+| 2026-08-30 | Signup provisions company + admin via **service-role client**, not the anon session | RLS's `auth_company_id()` needs an existing `users` row to resolve; the first company + admin rows must bootstrap that state, so they're written server-side with the service role and an explicit (never client-supplied) `userId`. |
 | 2026-08-29 | Recommend **Next.js + Supabase** single stack (vs. separate React + Express backend) | Fewer moving parts for a solo dev; one deploy target; Supabase bundles Postgres + Auth + RLS. |
 | 2026-08-29 | Default AI model **Claude Haiku 4.5**, provider abstracted | Cost-efficient; matches README's "one cheap/fast model" mechanic; swappable via `lib/ai/client.ts`. |
 | 2026-08-29 | **Compliance juror can veto** to `fail` regardless of aggregate | Legal risk should block publishing even if other scores are high. |

@@ -72,7 +72,7 @@ export const ReviewResultSchema = z.object({
 });
 export type ReviewResult = z.infer<typeof ReviewResultSchema>;
 
-/** Input accepted by the review endpoint / orchestrator. */
+/** Input accepted by the orchestrator. */
 export const ReviewInputSchema = z.object({
   content_text: z.string().min(1, "Content is required").max(10_000),
   content_type: z.enum(["ad_copy", "social_post", "email", "landing_page"]),
@@ -80,3 +80,17 @@ export const ReviewInputSchema = z.object({
   brand_context: z.string().nullable().default(null),
 });
 export type ReviewInput = z.infer<typeof ReviewInputSchema>;
+
+/**
+ * The client-supplied fields of a review request (`POST /api/reviews`).
+ * Deliberately a subset of ReviewInput: `company_id` / `submitted_by` are
+ * derived from the session, and `brand_context` is loaded server-side from the
+ * company's brand profile (Day 27) — none of these are ever trusted from the
+ * client (Rules.md §5).
+ */
+export const ReviewRequestSchema = ReviewInputSchema.pick({
+  content_text: true,
+  content_type: true,
+  platform: true,
+});
+export type ReviewRequest = z.infer<typeof ReviewRequestSchema>;

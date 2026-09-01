@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-08-31 (Day 4 — Role-based access)
+> **Status:** Active · **Last updated:** 2026-09-01 (Day 5 — Review endpoint)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -35,8 +35,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Route protection: unauthenticated → login; gate `/(dashboard)`; admin-only guard for brand/team routes.
 - DoD: member cannot reach admin routes; unauth redirected; add a guard unit test. **Completed 2026-08-31.**
 
-### Day 5 — Review endpoint
-- [ ] `POST /api/reviews`: Zod-validate input, run orchestrator, persist `reviews` + `persona_scores`, return `ReviewResult`. Derive `company_id`/`submitted_by` from the session (never trust client).
+### Day 5 — Review endpoint ✅
+- [x] `POST /api/reviews`: Zod-validate input, run orchestrator, persist `reviews` + `persona_scores`, return `ReviewResult`. Derive `company_id`/`submitted_by` from the session (never trust client). **Completed 2026-09-01.**
 - DoD: endpoint returns a valid review and rows persist tenant-safely; add an endpoint test with the mock client.
 
 ### Day 6 — Fetch & list endpoints

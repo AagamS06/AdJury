@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-09-01 (Day 5 — Review endpoint)
+> **Status:** Active · **Last updated:** 2026-09-02 (Day 6 — Fetch & list endpoints)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -39,8 +39,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] `POST /api/reviews`: Zod-validate input, run orchestrator, persist `reviews` + `persona_scores`, return `ReviewResult`. Derive `company_id`/`submitted_by` from the session (never trust client). **Completed 2026-09-01.**
 - DoD: endpoint returns a valid review and rows persist tenant-safely; add an endpoint test with the mock client.
 
-### Day 6 — Fetch & list endpoints
-- [ ] `GET /api/reviews/[id]` and a list endpoint, both scoped to the caller's company via RLS/serverClient.
+### Day 6 — Fetch & list endpoints ✅
+- [x] `GET /api/reviews/[id]` and a list endpoint, both scoped to the caller's company via RLS/serverClient. **Completed 2026-09-02.**
 - DoD: fetch-by-id and list return only the company's rows; add tests.
 
 ### Day 7 — Week 1 hardening

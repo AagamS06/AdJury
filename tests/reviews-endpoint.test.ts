@@ -131,6 +131,27 @@ describe("createReview (POST /api/reviews)", () => {
     expect(result).toMatchObject({ ok: false, status: 400 });
   });
 
+  it("rejects an unknown content_type value with 400 and never persists", async () => {
+    const { calls, persist } = recordingPersist();
+    const result = await createReview(
+      { content_text: "hello", content_type: "blog_post", platform: null },
+      { session: SESSION, persist },
+    );
+    expect(result).toMatchObject({ ok: false, status: 400 });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("passes the submitted content_type and platform through to persistence untampered", async () => {
+    const { calls, persist } = recordingPersist();
+    const result = await createReview(
+      { content_text: "A short promo.", content_type: "email", platform: "newsletter" },
+      { session: SESSION, persist },
+    );
+    expect(result.ok).toBe(true);
+    expect(calls[0]?.review.content_type).toBe("email");
+    expect(calls[0]?.review.platform).toBe("newsletter");
+  });
+
   it("returns 502 and does not persist when every juror fails", async () => {
     const { calls, persist } = recordingPersist();
     // A client that never returns valid JSON makes every juror error out.

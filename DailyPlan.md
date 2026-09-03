@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-09-02 (Day 6 — Fetch & list endpoints)
+> **Status:** Active · **Last updated:** 2026-09-03 (Day 7 — Week 1 hardening)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -43,8 +43,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] `GET /api/reviews/[id]` and a list endpoint, both scoped to the caller's company via RLS/serverClient. **Completed 2026-09-02.**
 - DoD: fetch-by-id and list return only the company's rows; add tests.
 
-### Day 7 — Week 1 hardening
-- [ ] Expand tests (endpoint + tenancy); light persona-prompt calibration; refresh [Memory.md](Memory.md); write a short Week 1 summary.
+### Day 7 — Week 1 hardening ✅
+- [x] Expand tests (endpoint + tenancy); light persona-prompt calibration; refresh [Memory.md](Memory.md); write a short Week 1 summary. **Completed 2026-09-03.**
 - DoD: all tests green; Memory.md current.
 
 ---

@@ -45,6 +45,19 @@ Scoring anchors (apply to your lens):
 - 3-4:  Weak. Significant problems on this lens.
 - 0-2:  Failing. Do not publish; major rework needed.`.trim();
 
+/**
+ * Shared confidence rubric (Day 7 calibration). Confidence is part of the
+ * contract (PRD.md §7) but the personas previously gave the model no guidance on
+ * when to use each level, so it was reported inconsistently. Report how sure you
+ * are of the SCORE, independent of how good the content is — a low score can be
+ * high-confidence. Keeps confidence comparable across the five jurors.
+ */
+export const CONFIDENCE_GUIDANCE = `
+Confidence guidance (how sure you are of THIS score, not how good the content is):
+- high:   the content clearly sits in this band; little ambiguity on your lens.
+- medium: a defensible judgement, but context or intent could reasonably shift it.
+- low:    limited signal — very short content, or missing brand/audience context.`.trim();
+
 /** Compose a full system prompt from a persona's role and lens-specific rubric. */
 export function composeSystemPrompt(args: {
   name: PersonaName;
@@ -57,6 +70,8 @@ export function composeSystemPrompt(args: {
     args.rubric.trim(),
     "",
     SHARED_ANCHORS,
+    "",
+    CONFIDENCE_GUIDANCE,
     "",
     OUTPUT_CONTRACT,
     "",

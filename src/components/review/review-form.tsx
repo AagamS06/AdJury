@@ -4,28 +4,28 @@ import { useId, useState } from "react";
 import {
   CONTENT_TYPE_OPTIONS,
   MAX_CONTENT_LENGTH,
-  PERSONA_LABELS,
   PLATFORM_OPTIONS,
   submitReview,
   validateReviewForm,
   type ReviewFieldErrors,
   type ReviewFormFields,
 } from "@/lib/reviews/review-form";
-import type { PersonaName, ReviewResult } from "@/lib/schema/juror";
+import type { ReviewResult } from "@/lib/schema/juror";
+import { Scorecard } from "@/components/review/scorecard";
 
 /**
  * Content submission form (DailyPlan Day 8): content textarea + content-type and
  * platform selects, client-side Zod validation, calls `POST /api/reviews`.
  *
- * On success it shows a minimal confirmation of the returned payload (aggregate
- * score, verdict, and one row per juror). The full Scorecard / JurorCard visual
- * system is Day 9–10 — this stays deliberately plain so a logged-in user can
- * submit and *receive a review payload* (the Day 8 DoD) without pulling that
- * work forward.
+ * On success it renders the returned payload as a full Scorecard (DailyPlan
+ * Day 9) — the aggregate + verdict header and one JurorCard per juror. The
+ * form's own concern stays submit-and-receive; the scorecard is a separate,
+ * reusable presentational component (`components/review/scorecard.tsx`).
  *
  * Accessibility (Design.md §6): every control has a real label; invalid fields
  * set `aria-invalid` and point at their message via `aria-describedby`; the
- * form-level error uses `role="alert"` and the result panel `role="status"`.
+ * form-level error uses `role="alert"` and the result region is a labelled
+ * live region.
  */
 
 const EMPTY_FIELDS: ReviewFormFields = {
@@ -83,11 +83,11 @@ export function ReviewForm() {
   const remaining = MAX_CONTENT_LENGTH - fields.content_text.length;
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+    <div className="space-y-8">
       <form
         onSubmit={onSubmit}
         noValidate
-        className="rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]"
+        className="max-w-3xl rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]"
       >
         {/* Content */}
         <div className="mb-4">
@@ -252,51 +252,24 @@ function ResultPanel({
   }
 
   return (
-    <section
-      role="status"
-      aria-label="Review result"
-      className="rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]"
-    >
-      <div className="flex items-baseline justify-between gap-4">
-        <div>
-          <p className="text-sm text-muted">Aggregate score</p>
-          <p className="text-3xl font-bold tabular-nums text-ink">
-            {result.aggregate_score.toFixed(1)}
-            <span className="text-lg font-medium text-muted"> / 10</span>
-          </p>
-        </div>
-        <p className="text-sm">
-          <span className="text-muted">Verdict: </span>
-          <span className="font-semibold capitalize text-navy">
-            {result.verdict}
-          </span>
-        </p>
-      </div>
+    <div role="status" aria-label="Review result" className="space-y-4">
+      <Scorecard
+        aggregateScore={result.aggregate_score}
+        verdict={result.verdict}
+        jurors={result.jurors}
+        contentType={result.content_type}
+        platform={result.platform}
+        createdAt={result.created_at}
+      />
 
-      <ul className="mt-5 divide-y divide-border border-t border-border">
-        {result.jurors.map((juror) => (
-          <li
-            key={juror.persona}
-            className="flex items-center justify-between gap-4 py-2.5 text-sm"
-          >
-            <span className="text-body">
-              {PERSONA_LABELS[juror.persona as PersonaName] ?? juror.persona}
-            </span>
-            <span className="tabular-nums font-medium text-ink">
-              {juror.status === "ok" ? `${juror.score} / 10` : "Needs retry"}
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      <details className="mt-5">
+      <details>
         <summary className="cursor-pointer text-sm font-medium text-royal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-bright">
           View raw JSON
         </summary>
-        <pre className="mt-2 max-h-72 overflow-auto rounded-sm border border-border bg-canvas p-3 font-mono text-xs text-body">
+        <pre className="mt-2 max-h-72 overflow-auto rounded-sm border border-border bg-surface p-3 font-mono text-xs text-body">
           {JSON.stringify(result, null, 2)}
         </pre>
       </details>
-    </section>
+    </div>
   );
 }

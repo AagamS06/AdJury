@@ -109,4 +109,6 @@ This is currently a solo project and a portfolio piece. If you're picking it up:
 
 ## License
 
-TBD.
+**Proprietary — All Rights Reserved.** © 2026 Aagam Shah. The source is public for
+demonstration and portfolio purposes only; no rights to use, copy, modify, deploy,
+or distribute are granted. See [LICENSE](LICENSE).

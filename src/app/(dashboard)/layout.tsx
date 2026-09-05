@@ -35,6 +35,7 @@ export default async function DashboardLayout({
               AdJury
             </Link>
             <NavLink href="/dashboard">Dashboard</NavLink>
+            <NavLink href="/review">New review</NavLink>
             {isAdmin && <NavLink href="/brand">Brand</NavLink>}
             {isAdmin && <NavLink href="/team">Team</NavLink>}
           </nav>

@@ -23,6 +23,19 @@ export default async function DashboardPage() {
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         <section className="rounded-md border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+          <h2 className="text-lg font-semibold text-navy">Submit content</h2>
+          <p className="mt-1 text-sm text-muted">
+            Run your marketing content past the five jurors.
+          </p>
+          <a
+            href="/review"
+            className="mt-3 inline-block rounded-sm bg-royal px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-royal-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-bright"
+          >
+            New review
+          </a>
+        </section>
+
+        <section className="rounded-md border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
           <h2 className="text-lg font-semibold text-navy">Your access</h2>
           <p className="mt-1 text-sm text-body">
             Role:{" "}

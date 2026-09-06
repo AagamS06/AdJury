@@ -19,7 +19,7 @@ const config: Config = {
         muted: "#667085",
         body: "#344054",
         success: "#15803D",
-        warning: "#B45309",
+        warning: { DEFAULT: "#B45309", deep: "#9A3412" },
         danger: "#B91C1C",
       },
       borderRadius: {

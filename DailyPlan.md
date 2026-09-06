@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-09-05 (Day 9 — Scorecard + JurorCard)
+> **Status:** Active · **Last updated:** 2026-09-06 (Day 10 — Verdict/score visual system)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -59,8 +59,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Scorecard component: aggregate + verdict header; `JurorCard` (score chip, summary, issues, suggested rewrite) per [Design.md](Design.md). **Completed 2026-09-05.**
 - DoD: a returned review renders as a full scorecard.
 
-### Day 10 — Verdict/score visual system
-- [ ] Score→color mapping, verdict pills, and issue-severity styling — always paired with text labels (never color-only, a11y).
+### Day 10 — Verdict/score visual system ✅
+- [x] Score→color mapping, verdict pills, and issue-severity styling — always paired with text labels (never color-only, a11y). **Completed 2026-09-06.**
 - DoD: matches Design.md §5; labels present for screen readers.
 
 ### Day 11 — Review history

@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-09-04 (Day 8 — Submission UI)
+> **Status:** Active · **Last updated:** 2026-09-05 (Day 9 — Scorecard + JurorCard)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -55,8 +55,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] `/review` submission form: content textarea, content-type + platform selects, client-side Zod validation, calls `/api/reviews`. **Completed 2026-09-04.**
 - DoD: a logged-in user can submit and receive a review payload.
 
-### Day 9 — Scorecard + JurorCard
-- [ ] Scorecard component: aggregate + verdict header; `JurorCard` (score chip, summary, issues, suggested rewrite) per [Design.md](Design.md).
+### Day 9 — Scorecard + JurorCard ✅
+- [x] Scorecard component: aggregate + verdict header; `JurorCard` (score chip, summary, issues, suggested rewrite) per [Design.md](Design.md). **Completed 2026-09-05.**
 - DoD: a returned review renders as a full scorecard.
 
 ### Day 10 — Verdict/score visual system

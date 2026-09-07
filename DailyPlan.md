@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-09-06 (Day 10 — Verdict/score visual system)
+> **Status:** Active · **Last updated:** 2026-09-07 (Day 11 — Review history)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -63,8 +63,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Score→color mapping, verdict pills, and issue-severity styling — always paired with text labels (never color-only, a11y). **Completed 2026-09-06.**
 - DoD: matches Design.md §5; labels present for screen readers.
 
-### Day 11 — Review history
-- [ ] `/history`: list past reviews (date, aggregate, verdict) linking to detail; company-scoped.
+### Day 11 — Review history ✅
+- [x] `/history`: list past reviews (date, aggregate, verdict) linking to detail; company-scoped. **Completed 2026-09-07.**
 - DoD: history loads and is tenant-safe.
 
 ### Day 12 — Review detail page

@@ -148,3 +148,74 @@ export function severityLabel(severity: Severity): string {
 export function confidenceLabel(confidence: "high" | "medium" | "low"): string {
   return `${confidence.charAt(0).toUpperCase()}${confidence.slice(1)} confidence`;
 }
+
+/**
+ * A count of how a review's jurors fared (DailyPlan Day 13 — states &
+ * resilience). A single juror that fails to return valid JSON is stored as an
+ * `error` slot (Rules.md §6), so a rendered review can legitimately carry a mix
+ * of scored and errored jurors — the scorecard needs to say so rather than
+ * silently showing fewer cards.
+ */
+export interface JurorHealth {
+  /** Total juror slots on the review. */
+  total: number;
+  /** Slots that returned a valid, scored result. */
+  scored: number;
+  /** Slots that failed and were recorded as `error`. */
+  errored: number;
+  /** Every slot errored (and there is at least one slot). */
+  allErrored: boolean;
+  /** Some — but not all — slots errored. */
+  someErrored: boolean;
+}
+
+/** Summarise how many jurors scored vs. errored for a review. */
+export function summarizeJurorHealth(jurors: JurorSlot[]): JurorHealth {
+  const total = jurors.length;
+  const errored = jurors.reduce(
+    (n, j) => (j.status === "error" ? n + 1 : n),
+    0,
+  );
+  return {
+    total,
+    scored: total - errored,
+    errored,
+    allErrored: total > 0 && errored === total,
+    someErrored: errored > 0 && errored < total,
+  };
+}
+
+/** A degraded-review banner: a plain-language message with a semantic tone. */
+export interface JurorHealthNotice {
+  tone: "warning" | "danger";
+  message: string;
+}
+
+/**
+ * The banner (if any) a scorecard should show above its juror cards. `null`
+ * means every juror scored — no banner needed. A partial failure is a
+ * `warning` (the review is still useful); no jurors at all — an empty review or
+ * every juror failing — is a `danger` state that invites a retry (Rules.md §6).
+ */
+export function jurorHealthNotice(health: JurorHealth): JurorHealthNotice | null {
+  if (health.total === 0) {
+    return {
+      tone: "danger",
+      message: "This review has no juror results to show. Try running it again.",
+    };
+  }
+  if (health.allErrored) {
+    return {
+      tone: "danger",
+      message: `None of the ${health.total} jurors could be scored for this review. Try running it again.`,
+    };
+  }
+  if (health.someErrored) {
+    // `someErrored` implies total ≥ 2, so "jurors" always agrees with the total.
+    return {
+      tone: "warning",
+      message: `${health.errored} of ${health.total} jurors couldn't be scored. The aggregate reflects only the jurors that returned a result.`,
+    };
+  }
+  return null;
+}

@@ -5,7 +5,7 @@ import {
   verdictLabel,
   verdictTone,
 } from "@/lib/reviews/scorecard-view";
-import { CONTENT_TYPE_OPTIONS } from "@/lib/reviews/review-form";
+import { contentTypeLabel, platformLabel } from "@/lib/reviews/history-view";
 import type { JurorSlot, Verdict } from "@/lib/schema/juror";
 import { JurorCard } from "./juror-card";
 import { PILL_CLASSES } from "./tone-classes";
@@ -27,10 +27,6 @@ export interface ScorecardProps {
   contentType?: string;
   platform?: string | null;
   createdAt?: string;
-}
-
-function contentTypeLabel(value: string): string {
-  return CONTENT_TYPE_OPTIONS.find((o) => o.value === value)?.label ?? value;
 }
 
 function formatCreatedAt(iso: string): string | null {
@@ -55,9 +51,12 @@ export function Scorecard({
   const created = createdAt ? formatCreatedAt(createdAt) : null;
   const notice = jurorHealthNotice(summarizeJurorHealth(jurors));
 
+  // Reuse the shared history-view label helpers so a review's header meta reads
+  // identically to its history row (Design.md §1.4 "consistency is credibility"):
+  // the platform shows its human label ("Instagram"), not the raw value.
   const meta = [
     contentType ? contentTypeLabel(contentType) : null,
-    platform ? platform : null,
+    platformLabel(platform ?? null),
     created,
   ].filter((v): v is string => Boolean(v));
 

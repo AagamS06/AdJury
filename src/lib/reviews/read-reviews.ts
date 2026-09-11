@@ -41,6 +41,13 @@ export interface PersistedReview {
   aggregate_score: number | null;
   verdict: Verdict | null;
   jurors: JurorSlot[];
+  /**
+   * The submitted content, kept so the detail page can show each juror's
+   * before/after rewrite diff (DailyPlan Day 15). This is a single-review read
+   * (not the history list), so returning the content is intentional — the thin
+   * `ReviewSummary` still omits it.
+   */
+  content_text: string;
 }
 
 /** A lightweight review row for history lists (no content_text — keep it thin). */
@@ -102,6 +109,7 @@ export function reviewWithScoresToPersisted(
     aggregate_score: data.review.aggregate_score,
     verdict: data.review.verdict,
     jurors,
+    content_text: data.review.content_text,
   };
 }
 

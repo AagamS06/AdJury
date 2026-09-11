@@ -8,6 +8,7 @@ import {
 } from "@/lib/reviews/scorecard-view";
 import { PERSONA_LABELS } from "@/lib/reviews/review-form";
 import type { Issue, JurorSlot } from "@/lib/schema/juror";
+import { RewritePanel } from "./rewrite-panel";
 import { BADGE_CLASSES, CHIP_CLASSES, ISSUE_BORDER_CLASSES } from "./tone-classes";
 
 /**
@@ -26,8 +27,19 @@ import { BADGE_CLASSES, CHIP_CLASSES, ISSUE_BORDER_CLASSES } from "./tone-classe
  * never travels alone (Design.md §6): the chip carries its number and a tier
  * word, the compliance override carries a "Compliance flag" badge, and every
  * severity carries its label.
+ *
+ * Day 15 turns the suggested-rewrite block into a `RewritePanel` — copy-to-
+ * clipboard plus, when the submitted `original` content is supplied, an
+ * expandable before/after highlight of the rewrite versus the original.
  */
-export function JurorCard({ juror }: { juror: JurorSlot }) {
+export function JurorCard({
+  juror,
+  original,
+}: {
+  juror: JurorSlot;
+  /** The review's submitted content, for the before/after rewrite diff. */
+  original?: string | null;
+}) {
   const label = PERSONA_LABELS[juror.persona] ?? juror.persona;
 
   if (juror.status === "error") {
@@ -85,14 +97,7 @@ export function JurorCard({ juror }: { juror: JurorSlot }) {
 
       <JurorIssues issues={juror.issues} compliance={flagged} />
 
-      <div className="mt-4 rounded-sm border border-border bg-canvas p-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-          Suggested rewrite
-        </p>
-        <p className="mt-1 text-sm leading-relaxed text-body">
-          {juror.suggested_rewrite}
-        </p>
-      </div>
+      <RewritePanel rewrite={juror.suggested_rewrite} original={original} />
     </article>
   );
 }

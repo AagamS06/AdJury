@@ -44,6 +44,9 @@ export function ReviewForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<ReviewResult | null>(null);
+  // The content that produced `result`, captured for the before/after rewrite
+  // diff (DailyPlan Day 15) — the API response doesn't echo the content back.
+  const [submittedContent, setSubmittedContent] = useState<string | null>(null);
 
   function update<K extends keyof ReviewFormFields>(
     key: K,
@@ -75,6 +78,7 @@ export function ReviewForm() {
 
     if (outcome.ok) {
       setResult(outcome.review);
+      setSubmittedContent(validation.data.content_text);
     } else {
       setFormError(outcome.message);
     }
@@ -220,7 +224,11 @@ export function ReviewForm() {
         </button>
       </form>
 
-      <ResultPanel result={result} submitting={submitting} />
+      <ResultPanel
+        result={result}
+        submitting={submitting}
+        originalContent={submittedContent}
+      />
     </div>
   );
 }
@@ -228,9 +236,11 @@ export function ReviewForm() {
 function ResultPanel({
   result,
   submitting,
+  originalContent,
 }: {
   result: ReviewResult | null;
   submitting: boolean;
+  originalContent: string | null;
 }) {
   if (submitting) {
     return (
@@ -260,6 +270,7 @@ function ResultPanel({
         contentType={result.content_type}
         platform={result.platform}
         createdAt={result.created_at}
+        originalContent={originalContent}
       />
 
       <details>

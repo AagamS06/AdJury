@@ -1,5 +1,7 @@
 import {
   formatAggregate,
+  jurorHealthNotice,
+  summarizeJurorHealth,
   verdictLabel,
   verdictTone,
 } from "@/lib/reviews/scorecard-view";
@@ -51,6 +53,7 @@ export function Scorecard({
 }: ScorecardProps) {
   const pill = PILL_CLASSES[verdictTone(verdict)];
   const created = createdAt ? formatCreatedAt(createdAt) : null;
+  const notice = jurorHealthNotice(summarizeJurorHealth(jurors));
 
   const meta = [
     contentType ? contentTypeLabel(contentType) : null,
@@ -83,12 +86,39 @@ export function Scorecard({
         </span>
       </header>
 
+      {/* Degraded-review banner: some or all jurors failed, or none exist.
+          A single juror failing is expected and never fails the whole review
+          (Rules.md §6) — but the scorecard says so rather than quietly
+          rendering fewer cards. */}
+      {notice && (
+        <div className="px-6 pt-6">
+          <p
+            role={notice.tone === "danger" ? "alert" : "status"}
+            className={`rounded-sm border px-4 py-3 text-sm ${NOTICE_CLASSES[notice.tone]}`}
+          >
+            {notice.message}
+          </p>
+        </div>
+      )}
+
       {/* Juror cards */}
-      <div className="grid gap-4 bg-canvas p-6 sm:grid-cols-2">
-        {jurors.map((juror) => (
-          <JurorCard key={juror.persona} juror={juror} />
-        ))}
-      </div>
+      {jurors.length > 0 && (
+        <div className="grid gap-4 bg-canvas p-6 sm:grid-cols-2">
+          {jurors.map((juror) => (
+            <JurorCard key={juror.persona} juror={juror} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
+
+/**
+ * Banner colour by tone (component-layer colour→Tailwind, keeping the lib
+ * framework-agnostic). Tinted washes with same-hue text clear WCAG AA and pair
+ * the colour with the message text (Design.md §6).
+ */
+const NOTICE_CLASSES: Record<"warning" | "danger", string> = {
+  warning: "border-warning/30 bg-warning/10 text-warning",
+  danger: "border-danger/30 bg-danger/10 text-danger",
+};

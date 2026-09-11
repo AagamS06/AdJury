@@ -4,10 +4,12 @@ import {
   formatAggregate,
   hasComplianceFlags,
   issueTone,
+  jurorHealthNotice,
   jurorScoreTone,
   scoreTierLabel,
   scoreTone,
   severityLabel,
+  summarizeJurorHealth,
   verdictLabel,
   verdictTone,
 } from "@/lib/reviews/scorecard-view";
@@ -31,6 +33,13 @@ function okJuror(over: Partial<Extract<JurorSlot, { status: "ok" }>> = {}): Juro
     suggested_rewrite: "rewrite",
     ...over,
   };
+}
+
+/** An errored juror slot (Rules.md §6): the model failed to return valid JSON. */
+function errorJuror(
+  persona: JurorSlot["persona"] = "seo_discoverability",
+): JurorSlot {
+  return { persona, status: "error", error: "bad json" };
 }
 
 describe("formatAggregate", () => {
@@ -203,5 +212,93 @@ describe("confidenceLabel", () => {
     expect(confidenceLabel("high")).toBe("High confidence");
     expect(confidenceLabel("medium")).toBe("Medium confidence");
     expect(confidenceLabel("low")).toBe("Low confidence");
+  });
+});
+
+describe("summarizeJurorHealth", () => {
+  it("counts scored vs. errored slots with all jurors healthy", () => {
+    const health = summarizeJurorHealth([okJuror(), okJuror(), okJuror()]);
+    expect(health).toEqual({
+      total: 3,
+      scored: 3,
+      errored: 0,
+      allErrored: false,
+      someErrored: false,
+    });
+  });
+
+  it("flags a partial failure as someErrored (not allErrored)", () => {
+    const health = summarizeJurorHealth([okJuror(), errorJuror(), okJuror()]);
+    expect(health).toMatchObject({
+      total: 3,
+      scored: 2,
+      errored: 1,
+      allErrored: false,
+      someErrored: true,
+    });
+  });
+
+  it("flags allErrored only when every slot failed", () => {
+    const health = summarizeJurorHealth([errorJuror(), errorJuror()]);
+    expect(health).toMatchObject({
+      total: 2,
+      scored: 0,
+      errored: 2,
+      allErrored: true,
+      someErrored: false,
+    });
+  });
+
+  it("treats an empty juror list as neither all- nor some-errored", () => {
+    const health = summarizeJurorHealth([]);
+    expect(health).toEqual({
+      total: 0,
+      scored: 0,
+      errored: 0,
+      allErrored: false,
+      someErrored: false,
+    });
+  });
+});
+
+describe("jurorHealthNotice", () => {
+  it("returns null when every juror scored (no banner)", () => {
+    expect(jurorHealthNotice(summarizeJurorHealth([okJuror(), okJuror()]))).toBeNull();
+  });
+
+  it("warns, with counts, when some jurors errored", () => {
+    const notice = jurorHealthNotice(
+      summarizeJurorHealth([okJuror(), errorJuror(), okJuror(), okJuror(), okJuror()]),
+    );
+    expect(notice?.tone).toBe("warning");
+    expect(notice?.message).toContain("1 of 5 jurors couldn't be scored");
+  });
+
+  it("agrees the noun with the total for a single failure", () => {
+    const notice = jurorHealthNotice(
+      summarizeJurorHealth([okJuror(), errorJuror()]),
+    );
+    expect(notice?.message).toContain("1 of 2 jurors couldn't be scored");
+  });
+
+  it("counts multiple failures", () => {
+    const notice = jurorHealthNotice(
+      summarizeJurorHealth([okJuror(), errorJuror(), errorJuror()]),
+    );
+    expect(notice?.message).toContain("2 of 3 jurors couldn't be scored");
+  });
+
+  it("raises a danger banner when all jurors errored", () => {
+    const notice = jurorHealthNotice(
+      summarizeJurorHealth([errorJuror(), errorJuror(), errorJuror()]),
+    );
+    expect(notice?.tone).toBe("danger");
+    expect(notice?.message).toContain("None of the 3 jurors could be scored");
+  });
+
+  it("raises a danger banner for a review with no jurors at all", () => {
+    const notice = jurorHealthNotice(summarizeJurorHealth([]));
+    expect(notice?.tone).toBe("danger");
+    expect(notice?.message).toContain("no juror results");
   });
 });

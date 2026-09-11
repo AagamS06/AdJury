@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-09-08 (Day 12 — Review detail page)
+> **Status:** Active · **Last updated:** 2026-09-09 (Day 13 — States & resilience)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -71,8 +71,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] `/review/[id]`: render a persisted review from stored `reviews` + `persona_scores`. **Completed 2026-09-08.**
 - DoD: detail page reconstructs the full scorecard from the DB.
 
-### Day 13 — States & resilience
-- [ ] Loading / error / empty states across submit, scorecard, history; graceful single-juror `error` rendering.
+### Day 13 — States & resilience ✅
+- [x] Loading / error / empty states across submit, scorecard, history; graceful single-juror `error` rendering. **Completed 2026-09-09.**
 - DoD: no unhandled states; matches Rules.md §6.
 
 ### Day 14 — Week 2 hardening

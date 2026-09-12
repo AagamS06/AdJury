@@ -80,6 +80,7 @@ export default async function ReviewDetailPage({
             contentType={state.review.content_type}
             platform={state.review.platform}
             createdAt={state.review.created_at}
+            originalContent={state.review.content_text}
           />
         ) : (
           <p

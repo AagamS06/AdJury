@@ -27,6 +27,12 @@ export interface ScorecardProps {
   contentType?: string;
   platform?: string | null;
   createdAt?: string;
+  /**
+   * The review's submitted content, threaded to each JurorCard so its
+   * suggested-rewrite panel can show a before/after diff (DailyPlan Day 15).
+   * Optional — omit and the rewrite panels simply skip the comparison.
+   */
+  originalContent?: string | null;
 }
 
 function formatCreatedAt(iso: string): string | null {
@@ -46,6 +52,7 @@ export function Scorecard({
   contentType,
   platform,
   createdAt,
+  originalContent,
 }: ScorecardProps) {
   const pill = PILL_CLASSES[verdictTone(verdict)];
   const created = createdAt ? formatCreatedAt(createdAt) : null;
@@ -104,7 +111,11 @@ export function Scorecard({
       {jurors.length > 0 && (
         <div className="grid gap-4 bg-canvas p-6 sm:grid-cols-2">
           {jurors.map((juror) => (
-            <JurorCard key={juror.persona} juror={juror} />
+            <JurorCard
+              key={juror.persona}
+              juror={juror}
+              original={originalContent}
+            />
           ))}
         </div>
       )}

@@ -24,6 +24,7 @@ function persisted(overrides: Partial<PersistedReview> = {}): PersistedReview {
     aggregate_score: 7.2,
     verdict: "revise",
     jurors: [],
+    content_text: "Introducing our new sleep supplement.",
     ...overrides,
   };
 }

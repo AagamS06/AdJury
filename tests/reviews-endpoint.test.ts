@@ -23,6 +23,7 @@ const SESSION: SessionContext = {
     name: "Acme",
     industry: null,
     plan_tier: "free",
+    juror_weights: null,
     created_at: "2026-08-31T00:00:00.000Z",
   },
 };

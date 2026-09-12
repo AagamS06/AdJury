@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-09-11 (Day 15 — Suggested-rewrite UX)
+> **Status:** Active · **Last updated:** 2026-09-12 (Day 16 — Configurable weighting)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -87,8 +87,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Copy-to-clipboard + before/after highlight of rewrite vs original. **Completed 2026-09-11.**
 - DoD: users can copy a rewrite; diff is legible.
 
-### Day 16 — Configurable weighting
-- [ ] Scaffold per-company juror weights (default equal); scoring reads weights.
+### Day 16 — Configurable weighting ✅
+- [x] Scaffold per-company juror weights (default equal); scoring reads weights. **Completed 2026-09-12.**
 - DoD: aggregate honors custom weights; default unchanged; tests updated.
 
 ### Day 17 — Rate limiting

@@ -5,6 +5,7 @@
  * we can swap these for Supabase-generated types without touching call sites.
  */
 import type { Confidence, Issue, PersonaName, Verdict } from "@/lib/schema/juror";
+import type { PersonaWeightsConfig } from "@/lib/schema/weights";
 
 export type PlanTier = "free" | "pro" | "enterprise";
 export type UserRole = "admin" | "member";
@@ -16,6 +17,8 @@ export interface CompanyRow {
   name: string;
   industry: string | null;
   plan_tier: PlanTier;
+  /** Per-company juror weights (Day 16); null = the equal default (0.2 each). */
+  juror_weights: PersonaWeightsConfig | null;
   created_at: string;
 }
 

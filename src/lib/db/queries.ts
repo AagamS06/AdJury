@@ -13,6 +13,10 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { JurorSlot, ReviewResult } from "@/lib/schema/juror";
+import {
+  PersonaWeightsInputSchema,
+  type PersonaWeightsInput,
+} from "@/lib/schema/weights";
 import type {
   BrandProfileRow,
   CompanyRow,
@@ -66,6 +70,31 @@ export async function insertCompany(
     .select("*")
     .single();
   if (error) fail("insertCompany", error);
+  return data as CompanyRow;
+}
+
+/**
+ * Set a company's juror weights (DailyPlan Day 16 scaffold; admin-only edit UI
+ * lands later). Tenancy is explicit and server-derived — `companyId` comes from
+ * the session, never the client (Rules.md §5) — and the config is validated
+ * against `PersonaWeightsInputSchema` before it touches the DB (Rules.md §3),
+ * so a malformed weight map is rejected rather than stored. Passing `null`
+ * clears the config back to the equal default.
+ */
+export async function updateCompanyJurorWeights(
+  db: SupabaseClient,
+  companyId: string,
+  weights: PersonaWeightsInput | null,
+): Promise<CompanyRow> {
+  const juror_weights =
+    weights === null ? null : PersonaWeightsInputSchema.parse(weights);
+  const { data, error } = await db
+    .from("companies")
+    .update({ juror_weights })
+    .eq("id", companyId)
+    .select("*")
+    .single();
+  if (error) fail("updateCompanyJurorWeights", error);
   return data as CompanyRow;
 }
 

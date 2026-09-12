@@ -5,6 +5,7 @@ import {
   type ReviewResult,
 } from "@/lib/schema/juror";
 import { computeAggregate, deriveVerdict } from "@/lib/scoring";
+import type { PersonaWeights } from "@/lib/schema/weights";
 import { getModelClient, type ModelClient } from "./client";
 import { PERSONAS, type Persona } from "./personas";
 
@@ -87,7 +88,7 @@ async function runPersona(
  */
 export async function runReview(
   input: ReviewInput,
-  deps: { client?: ModelClient } = {},
+  deps: { client?: ModelClient; weights?: PersonaWeights } = {},
 ): Promise<ReviewResult> {
   const client = deps.client ?? getModelClient();
 
@@ -95,7 +96,8 @@ export async function runReview(
     PERSONAS.map((persona) => runPersona(client, input, persona)),
   );
 
-  const aggregate_score = computeAggregate(jurors);
+  // Per-company weights (DailyPlan Day 16); omitted → equal default.
+  const aggregate_score = computeAggregate(jurors, deps.weights);
   const verdict = deriveVerdict(aggregate_score, jurors);
 
   return {

@@ -18,6 +18,7 @@ import { runReview } from "@/lib/ai/orchestrator";
 import type { SessionContext } from "@/lib/auth/session";
 import type { InsertReviewParams } from "@/lib/db/queries";
 import { ReviewRequestSchema, type ReviewResult } from "@/lib/schema/juror";
+import { resolveWeights } from "@/lib/scoring";
 import type { ReviewWithScores } from "@/types/db";
 
 export type CreateReviewResult =
@@ -63,7 +64,10 @@ export async function createReview(
   }
 
   // 3. Run the five jurors. brand_context stays null here; loading the
-  //    company's stored brand guide into Juror 1 is Day 27.
+  //    company's stored brand guide into Juror 1 is Day 27. The aggregate
+  //    honors the company's configured juror weights (Day 16), resolved from
+  //    the server session's company row (never the client — Rules.md §5);
+  //    an unset/partial/invalid config safely falls back to equal weights.
   const review = await runReview(
     {
       content_text: parsed.data.content_text,
@@ -71,7 +75,10 @@ export async function createReview(
       platform: parsed.data.platform,
       brand_context: null,
     },
-    { client: deps.client },
+    {
+      client: deps.client,
+      weights: resolveWeights(deps.session.company.juror_weights),
+    },
   );
 
   // 4. If every juror failed, don't persist a partial review as complete

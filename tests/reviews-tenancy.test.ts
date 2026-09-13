@@ -281,6 +281,7 @@ function sessionFor(companyId: string): SessionContext {
       name: "Co",
       industry: null,
       plan_tier: "free",
+      juror_weights: null,
       created_at: "2026-08-31T00:00:00.000Z",
     },
   };

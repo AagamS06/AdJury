@@ -16,13 +16,21 @@
 import type { ModelClient } from "@/lib/ai/client";
 import { runReview } from "@/lib/ai/orchestrator";
 import type { SessionContext } from "@/lib/auth/session";
-import type { InsertReviewParams } from "@/lib/db/queries";
+import type { InsertReviewParams, ReviewRateUsage } from "@/lib/db/queries";
+import {
+  evaluateRateLimit,
+  rateLimitMessage,
+  rateLimitWindowStart,
+  resolveRateLimitPolicy,
+  type RateLimitDecision,
+} from "@/lib/rate-limit";
 import { ReviewRequestSchema, type ReviewResult } from "@/lib/schema/juror";
 import { resolveWeights } from "@/lib/scoring";
 import type { ReviewWithScores } from "@/types/db";
 
 export type CreateReviewResult =
   | { ok: true; status: 201; review: ReviewResult }
+  | { ok: false; status: 429; error: string; rateLimit: RateLimitDecision }
   | { ok: false; status: 400 | 401 | 500 | 502; error: string };
 
 export interface CreateReviewDeps {
@@ -35,6 +43,14 @@ export interface CreateReviewDeps {
    * so this logic is testable without a database.
    */
   persist: (params: InsertReviewParams) => Promise<ReviewWithScores>;
+  /**
+   * Read the company's review usage within the rate-limit window (DailyPlan
+   * Day 17). Wired to `getReviewRateUsage` in the route; when omitted (e.g. a
+   * test exercising a different path) the per-plan limit is not enforced. A
+   * failure of this read fails OPEN — a transient usage-count blip must not
+   * block a legitimate review, and it is logged with redacted context.
+   */
+  getRateUsage?: (companyId: string, sinceIso: string) => Promise<ReviewRateUsage>;
   /** Model client; defaults to the env-selected client (offline mock, no key). */
   client?: ModelClient;
 }
@@ -63,7 +79,36 @@ export async function createReview(
     };
   }
 
-  // 3. Run the five jurors. brand_context stays null here; loading the
+  // 3. Enforce the per-plan rate limit BEFORE the expensive five-juror fan-out
+  //    (Rules.md §1 cost discipline; §6 → 429 with the plan limit + reset time).
+  //    The limit is keyed to the plan on the server-resolved company row, never
+  //    the client. A usage-read failure fails open (rate limiting is a soft cost
+  //    guard, not an authz boundary) but is logged with redacted context.
+  if (deps.getRateUsage) {
+    const now = new Date();
+    const policy = resolveRateLimitPolicy(deps.session.company.plan_tier);
+    const since = rateLimitWindowStart(policy, now).toISOString();
+    try {
+      const usage = await deps.getRateUsage(deps.session.companyId, since);
+      const decision = evaluateRateLimit(policy, usage, now);
+      if (!decision.allowed) {
+        return {
+          ok: false,
+          status: 429,
+          error: rateLimitMessage(decision),
+          rateLimit: decision,
+        };
+      }
+    } catch (err) {
+      console.error("rate-limit usage read failed (failing open)", {
+        op: "createReview",
+        companyId: deps.session.companyId,
+        message: err instanceof Error ? err.message : "unknown error",
+      });
+    }
+  }
+
+  // 4. Run the five jurors. brand_context stays null here; loading the
   //    company's stored brand guide into Juror 1 is Day 27. The aggregate
   //    honors the company's configured juror weights (Day 16), resolved from
   //    the server session's company row (never the client — Rules.md §5);
@@ -81,7 +126,7 @@ export async function createReview(
     },
   );
 
-  // 4. If every juror failed, don't persist a partial review as complete
+  // 5. If every juror failed, don't persist a partial review as complete
   //    (Rules.md §6 — all jurors fail → retryable error, nothing stored).
   const anyOk = review.jurors.some((j) => j.status === "ok");
   if (!anyOk) {
@@ -92,7 +137,7 @@ export async function createReview(
     };
   }
 
-  // 5. Persist tenant-safely: company_id + submitted_by are derived server-side.
+  // 6. Persist tenant-safely: company_id + submitted_by are derived server-side.
   try {
     await deps.persist({
       companyId: deps.session.companyId,

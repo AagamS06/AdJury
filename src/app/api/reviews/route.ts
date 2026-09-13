@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/auth/supabase-server";
 import { getSessionContext } from "@/lib/auth/session";
-import { insertReviewWithScores, listReviewsByCompany } from "@/lib/db/queries";
+import {
+  getReviewRateUsage,
+  insertReviewWithScores,
+  listReviewsByCompany,
+} from "@/lib/db/queries";
 import { serverClient } from "@/lib/db/supabase";
 import { createReview } from "@/lib/reviews/create-review";
 import { listReviewsForCompany } from "@/lib/reviews/read-reviews";
@@ -43,10 +47,32 @@ export async function POST(request: Request): Promise<Response> {
     // (persona_scores has no client INSERT policy). Constructed lazily so an
     // unauthenticated request never touches the service-role env.
     persist: (params) => insertReviewWithScores(serverClient(), params),
+    // Per-plan rate limiting (Day 17): count the company's reviews in the
+    // window via the request-scoped anon client (RLS scopes it to the company;
+    // the session's companyId is also passed explicitly).
+    getRateUsage: async (companyId, sinceIso) => {
+      const db = await createServerSupabase();
+      return getReviewRateUsage(db, companyId, sinceIso);
+    },
   });
 
   if (result.ok) {
     return NextResponse.json(result.review, { status: result.status });
+  }
+  if (result.status === 429) {
+    // Surface the limit + reset info in headers and the body (Rules.md §6).
+    const { limit, remaining, resetAt, retryAfterSeconds } = result.rateLimit;
+    const headers = new Headers();
+    headers.set("X-RateLimit-Limit", String(limit));
+    headers.set("X-RateLimit-Remaining", String(remaining));
+    if (resetAt) headers.set("X-RateLimit-Reset", resetAt);
+    if (retryAfterSeconds !== null) {
+      headers.set("Retry-After", String(retryAfterSeconds));
+    }
+    return NextResponse.json(
+      { error: result.error, limit, remaining, resetAt, retryAfterSeconds },
+      { status: 429, headers },
+    );
   }
   return NextResponse.json({ error: result.error }, { status: result.status });
 }

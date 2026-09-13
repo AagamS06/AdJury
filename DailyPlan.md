@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-09-12 (Day 16 — Configurable weighting)
+> **Status:** Active · **Last updated:** 2026-09-13 (Day 17 — Rate limiting)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -91,8 +91,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Scaffold per-company juror weights (default equal); scoring reads weights. **Completed 2026-09-12.**
 - DoD: aggregate honors custom weights; default unchanged; tests updated.
 
-### Day 17 — Rate limiting
-- [ ] `src/lib/rate-limit.ts`: per-plan review limits enforced in `/api/reviews` (429 + reset info).
+### Day 17 — Rate limiting ✅
+- [x] `src/lib/rate-limit.ts`: per-plan review limits enforced in `/api/reviews` (429 + reset info). **Completed 2026-09-13.**
 - DoD: exceeding the limit returns 429; add a test.
 
 ### Day 18 — Cost guardrails

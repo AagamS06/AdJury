@@ -314,6 +314,38 @@ export async function getReviewById(
   return { review, scores: (scores as PersonaScoreRow[]) ?? [] };
 }
 
+/** Review usage within a rolling rate-limit window (DailyPlan Day 17). */
+export interface ReviewRateUsage {
+  /** Reviews the company created at or after `sinceIso`. */
+  count: number;
+  /** ISO created_at of the oldest review in the window, or null if none. */
+  oldest: string | null;
+}
+
+/**
+ * Count a company's reviews created since `sinceIso` and return the oldest one's
+ * timestamp, for per-plan rate limiting (`src/lib/rate-limit.ts`). Tenancy is
+ * explicit: `companyId` is server-derived (never the client — Rules.md §5). A
+ * single exact-count query returns the total (independent of the row limit) plus
+ * the oldest row, so only one row crosses the wire regardless of the count.
+ */
+export async function getReviewRateUsage(
+  db: SupabaseClient,
+  companyId: string,
+  sinceIso: string,
+): Promise<ReviewRateUsage> {
+  const { data, error, count } = await db
+    .from("reviews")
+    .select("created_at", { count: "exact" })
+    .eq("company_id", companyId)
+    .gte("created_at", sinceIso)
+    .order("created_at", { ascending: true })
+    .limit(1);
+  if (error) fail("getReviewRateUsage", error);
+  const oldest = (data as { created_at: string }[] | null)?.[0]?.created_at ?? null;
+  return { count: count ?? 0, oldest };
+}
+
 export interface ListReviewsOptions {
   limit?: number;
 }

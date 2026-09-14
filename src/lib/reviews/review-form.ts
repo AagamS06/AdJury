@@ -11,6 +11,7 @@
  * boundary. The API re-validates every field and derives tenancy from the
  * session, never the client (Rules.md §5/§6).
  */
+import { MAX_CONTENT_CHARS } from "@/lib/ai/cost";
 import {
   ReviewRequestSchema,
   ReviewResultSchema,
@@ -19,8 +20,12 @@ import {
   type ReviewResult,
 } from "@/lib/schema/juror";
 
-/** Max content length — mirrors `ReviewInputSchema.content_text` (10k chars). */
-export const MAX_CONTENT_LENGTH = 10_000;
+/**
+ * Max content length for the character counter — the single source of truth is
+ * the cost guardrail (`MAX_CONTENT_CHARS`), which `ReviewInputSchema` also uses,
+ * so the counter, client validation, and the server cap never drift apart.
+ */
+export const MAX_CONTENT_LENGTH = MAX_CONTENT_CHARS;
 
 /** Content-type select options — labels for the four schema enum values. */
 export const CONTENT_TYPE_OPTIONS = [

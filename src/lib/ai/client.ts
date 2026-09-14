@@ -1,4 +1,5 @@
 import type { PersonaName } from "@/lib/schema/juror";
+import { MAX_OUTPUT_TOKENS_PER_JUROR } from "./cost";
 
 /**
  * Provider-abstracted model client. All persona/orchestrator code depends on
@@ -54,7 +55,8 @@ class AnthropicClient implements ModelClient {
     const client = new Anthropic({ apiKey: this.apiKey });
     const res = await client.messages.create({
       model: this.model,
-      max_tokens: 1024,
+      // Cap output tokens per juror call (cost guardrail — DailyPlan Day 18).
+      max_tokens: MAX_OUTPUT_TOKENS_PER_JUROR,
       temperature: args.temperature ?? 0.2,
       system: args.system,
       messages: [{ role: "user", content: args.user }],

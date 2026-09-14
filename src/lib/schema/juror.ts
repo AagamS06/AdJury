@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_CONTENT_CHARS } from "@/lib/ai/cost";
 
 /**
  * The juror JSON contract. This is the single source of truth that every
@@ -74,7 +75,13 @@ export type ReviewResult = z.infer<typeof ReviewResultSchema>;
 
 /** Input accepted by the orchestrator. */
 export const ReviewInputSchema = z.object({
-  content_text: z.string().min(1, "Content is required").max(10_000),
+  content_text: z
+    .string()
+    .min(1, "Content is required")
+    .max(
+      MAX_CONTENT_CHARS,
+      `Content must be ${MAX_CONTENT_CHARS.toLocaleString()} characters or fewer.`,
+    ),
   content_type: z.enum(["ad_copy", "social_post", "email", "landing_page"]),
   platform: z.string().nullable().default(null),
   brand_context: z.string().nullable().default(null),

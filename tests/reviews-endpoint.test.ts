@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import type { ModelClient } from "@/lib/ai/client";
 import type { SessionContext } from "@/lib/auth/session";
 import type { InsertReviewParams } from "@/lib/db/queries";
@@ -58,6 +58,16 @@ const VALID_BODY = {
 };
 
 describe("createReview (POST /api/reviews)", () => {
+  // Successful reviews emit a redacted `console.info("review usage", …)` line
+  // (Day 18). Silence it by default so the suite output stays clean; the
+  // redaction-contract test below installs its own spy to assert on it.
+  beforeEach(() => {
+    vi.spyOn(console, "info").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("runs the jurors, persists, and returns a 201 with a valid review", async () => {
     const { calls, persist } = recordingPersist();
 
@@ -170,6 +180,32 @@ describe("createReview (POST /api/reviews)", () => {
 
     expect(result).toMatchObject({ ok: false, status: 502 });
     expect(calls).toHaveLength(0);
+  });
+
+  it("logs redacted usage on success and never logs the submitted content (Day 18)", async () => {
+    const { persist } = recordingPersist();
+    const spy = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    const secretish = "Buy our miracle cure now — call 555-0100, promo code HUSH";
+    const result = await createReview(
+      { content_text: secretish, content_type: "ad_copy", platform: null },
+      { session: SESSION, persist },
+    );
+
+    expect(result.ok).toBe(true);
+    // A single redacted usage line was emitted...
+    expect(spy).toHaveBeenCalledWith("review usage", expect.any(Object));
+    const [, record] = spy.mock.calls.find(([msg]) => msg === "review usage") ?? [];
+    // ...carrying only IDs/counts/scores, and NEVER the user's content (Rules.md §3).
+    expect(JSON.stringify(record)).not.toContain("miracle cure");
+    expect(JSON.stringify(record)).not.toContain("555-0100");
+    expect(record).toMatchObject({
+      companyId: SESSION.companyId,
+      jurorCount: PERSONA_NAMES.length,
+      isMock: true,
+    });
+    expect((record as { contentTokens: number }).contentTokens).toBeGreaterThan(0);
+    spy.mockRestore();
   });
 
   it("returns 500 without reporting success when the write fails", async () => {

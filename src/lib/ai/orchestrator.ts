@@ -1,3 +1,4 @@
+import { ZodError } from "zod";
 import {
   JurorResultSchema,
   type JurorSlot,
@@ -8,8 +9,17 @@ import { computeAggregate, deriveVerdict } from "@/lib/scoring";
 import type { PersonaWeights } from "@/lib/schema/weights";
 import { getModelClient, type ModelClient } from "./client";
 import { PERSONAS, type Persona } from "./personas";
+import {
+  callWithResilience,
+  classifyModelError,
+  TimeoutError,
+  type ResilienceOptions,
+} from "./resilience";
 
 const CONTENT_MARKER = "<<<CONTENT>>>";
+
+const CORRECTIVE_NUDGE =
+  "Your previous response was not valid JSON matching the required schema. Return ONLY the JSON object, nothing else.";
 
 /** Assemble the user message for one persona from the review input. */
 function buildUserPrompt(input: ReviewInput, persona: Persona): string {
@@ -43,43 +53,102 @@ function parseJson(raw: string): unknown {
   return JSON.parse(text);
 }
 
-/** Run one persona, validating output and retrying once on invalid JSON. */
+/** True when a failure is the model returning unusable output (bad JSON / schema). */
+function isOutputError(err: unknown): boolean {
+  return err instanceof ZodError || err instanceof SyntaxError;
+}
+
+/**
+ * A concise, content-free reason for a juror's failure. Kept internal (logs +
+ * the slot's `error` field); the UI shows its own generic message rather than
+ * this string, so no provider internals leak to users (Rules.md §6).
+ */
+function jurorErrorReason(err: unknown): string {
+  if (err instanceof TimeoutError) return "provider timeout";
+  if (err instanceof ZodError) return "invalid model output (schema mismatch)";
+  if (err instanceof SyntaxError) return "invalid model output (not JSON)";
+  switch (classifyModelError(err)) {
+    case "rate_limit":
+      return "provider rate limited";
+    case "permanent":
+      return "provider rejected the request";
+    default:
+      return "provider unavailable";
+  }
+}
+
+/**
+ * Run one persona to a validated result (DailyPlan Day 19).
+ *
+ * Two layers of resilience, kept distinct because they need different cures:
+ *  - The *model call* is wrapped in a per-attempt timeout + backoff retry for
+ *    transient provider failures (`callWithResilience`) — a nudge can't fix a
+ *    dead connection.
+ *  - The *output contract* keeps the Rules.md §6 behaviour: if the call
+ *    succeeds but the JSON is invalid, retry once with a corrective nudge.
+ * A provider failure that exhausts its retries doesn't waste the corrective
+ * attempt (the output was never the problem); either way, after the retries a
+ * failing juror degrades to an `error` slot so the other four still return.
+ */
 async function runPersona(
   client: ModelClient,
   input: ReviewInput,
   persona: Persona,
+  resilience?: Partial<ResilienceOptions>,
 ): Promise<JurorSlot> {
   const baseUser = buildUserPrompt(input, persona);
   const temperature = Number(process.env.AI_TEMPERATURE ?? "0.2");
+  let lastError: unknown = new Error("juror produced no result");
+  let sawOutputError = false;
 
   for (let attempt = 0; attempt < 2; attempt++) {
+    // Only append the corrective nudge when the previous failure was invalid
+    // output — a provider/timeout failure won't be helped by re-asking.
     const user =
-      attempt === 0
-        ? baseUser
-        : `${baseUser}\n\nYour previous response was not valid JSON matching the required schema. Return ONLY the JSON object, nothing else.`;
+      attempt > 0 && sawOutputError ? `${baseUser}\n\n${CORRECTIVE_NUDGE}` : baseUser;
     try {
-      const raw = await client.complete({
-        system: persona.systemPrompt,
-        user,
-        persona: persona.name,
-        temperature,
-      });
+      const raw = await callWithResilience(
+        (signal) =>
+          client.complete({
+            system: persona.systemPrompt,
+            user,
+            persona: persona.name,
+            temperature,
+            signal,
+          }),
+        {
+          ...resilience,
+          onRetry: (info) =>
+            console.warn("juror model call retry", {
+              op: "runPersona",
+              persona: persona.name,
+              attempt: info.attempt,
+              category: info.category,
+              delayMs: info.delayMs,
+            }),
+        },
+      );
       const parsed = parseJson(raw);
       const result = JurorResultSchema.parse(parsed);
       // Force the persona field to match the juror we asked for.
       return { ...result, persona: persona.name, status: "ok" as const };
     } catch (err) {
-      if (attempt === 1) {
-        return {
-          persona: persona.name,
-          status: "error" as const,
-          error: err instanceof Error ? err.message : "unknown error",
-        };
-      }
+      lastError = err;
+      sawOutputError = isOutputError(err);
+      // A provider/timeout failure gets no corrective retry; invalid output
+      // gets exactly one (attempt 1) before the juror degrades to `error`.
+      if (!sawOutputError || attempt === 1) break;
     }
   }
-  // Unreachable, but keeps the type checker happy.
-  return { persona: persona.name, status: "error" as const, error: "unreachable" };
+
+  const reason = jurorErrorReason(lastError);
+  // Redacted per-juror failure log (no content/secrets — Rules.md §3/§6).
+  console.error("juror failed", {
+    op: "runPersona",
+    persona: persona.name,
+    reason,
+  });
+  return { persona: persona.name, status: "error" as const, error: reason };
 }
 
 /**
@@ -88,12 +157,17 @@ async function runPersona(
  */
 export async function runReview(
   input: ReviewInput,
-  deps: { client?: ModelClient; weights?: PersonaWeights } = {},
+  deps: {
+    client?: ModelClient;
+    weights?: PersonaWeights;
+    /** Override the per-call timeout/backoff policy (DailyPlan Day 19; tests). */
+    resilience?: Partial<ResilienceOptions>;
+  } = {},
 ): Promise<ReviewResult> {
   const client = deps.client ?? getModelClient();
 
   const jurors = await Promise.all(
-    PERSONAS.map((persona) => runPersona(client, input, persona)),
+    PERSONAS.map((persona) => runPersona(client, input, persona, deps.resilience)),
   );
 
   // Per-company weights (DailyPlan Day 16); omitted → equal default.

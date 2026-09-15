@@ -17,6 +17,13 @@ export interface CompleteArgs {
   /** Persona hint — used only by the mock to shape plausible output. */
   persona: PersonaName;
   temperature?: number;
+  /**
+   * Abort signal for provider resilience (DailyPlan Day 19). The orchestrator's
+   * per-call timeout aborts this signal so a hung request is actually cancelled
+   * (not just abandoned). Optional so callers/tests that don't need a timeout
+   * can omit it.
+   */
+  signal?: AbortSignal;
 }
 
 export interface ModelClient {
@@ -53,14 +60,19 @@ class AnthropicClient implements ModelClient {
     // Lazy import so the mock path needs no SDK/network.
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const client = new Anthropic({ apiKey: this.apiKey });
-    const res = await client.messages.create({
-      model: this.model,
-      // Cap output tokens per juror call (cost guardrail — DailyPlan Day 18).
-      max_tokens: MAX_OUTPUT_TOKENS_PER_JUROR,
-      temperature: args.temperature ?? 0.2,
-      system: args.system,
-      messages: [{ role: "user", content: args.user }],
-    });
+    const res = await client.messages.create(
+      {
+        model: this.model,
+        // Cap output tokens per juror call (cost guardrail — DailyPlan Day 18).
+        max_tokens: MAX_OUTPUT_TOKENS_PER_JUROR,
+        temperature: args.temperature ?? 0.2,
+        system: args.system,
+        messages: [{ role: "user", content: args.user }],
+      },
+      // Thread the orchestrator's timeout abort signal into the request so a
+      // hung call is genuinely cancelled (DailyPlan Day 19).
+      { signal: args.signal },
+    );
     const block = res.content.find((b) => b.type === "text");
     return block && "text" in block ? block.text : "";
   }
@@ -76,6 +88,12 @@ class MockClient implements ModelClient {
   constructor(readonly model: string) {}
 
   async complete(args: CompleteArgs): Promise<string> {
+    // Respect an already-aborted signal so the mock honours the same
+    // cancellation contract as the live client (DailyPlan Day 19). The mock
+    // resolves synchronously, so in practice a timeout never fires against it.
+    if (args.signal?.aborted) {
+      throw new DOMException("The operation was aborted.", "AbortError");
+    }
     const content = extractContent(args.user);
     return JSON.stringify(mockJuror(args.persona, content));
   }

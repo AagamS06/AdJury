@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-09-14 (Day 18 — Cost guardrails)
+> **Status:** Active · **Last updated:** 2026-09-15 (Day 19 — Provider resilience)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -99,8 +99,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Enforce content size limits and a token budget; redacted logging of usage. **Completed 2026-09-14.**
 - DoD: oversized content rejected; no PII/secrets logged.
 
-### Day 19 — Provider resilience
-- [ ] Timeout/backoff on model calls; surface per-juror `error` cleanly to the UI.
+### Day 19 — Provider resilience ✅
+- [x] Timeout/backoff on model calls; surface per-juror `error` cleanly to the UI. **Completed 2026-09-15.**
 - DoD: simulated failure degrades gracefully; review still returns.
 
 ### Day 20 — Platform-aware prompts

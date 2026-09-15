@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ModelClient } from "@/lib/ai/client";
 import type { SessionContext } from "@/lib/auth/session";
@@ -279,6 +279,14 @@ const BODY = {
 };
 
 describe("createReview honors the company's configured weights", () => {
+  // Silence the redacted usage log (Day 18) emitted on a successful review.
+  beforeEach(() => {
+    vi.spyOn(console, "info").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("uses the equal default when juror_weights is null", async () => {
     const result = await createReview(BODY, {
       session: sessionWithWeights(null),

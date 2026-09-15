@@ -14,6 +14,13 @@
  * when the write fails.
  */
 import type { ModelClient } from "@/lib/ai/client";
+import {
+  checkContentSize,
+  checkTokenBudget,
+  estimateReviewUsage,
+  estimateTokens,
+  logReviewUsage,
+} from "@/lib/ai/cost";
 import { runReview } from "@/lib/ai/orchestrator";
 import type { SessionContext } from "@/lib/auth/session";
 import type { InsertReviewParams, ReviewRateUsage } from "@/lib/db/queries";
@@ -24,7 +31,11 @@ import {
   resolveRateLimitPolicy,
   type RateLimitDecision,
 } from "@/lib/rate-limit";
-import { ReviewRequestSchema, type ReviewResult } from "@/lib/schema/juror";
+import {
+  PERSONA_NAMES,
+  ReviewRequestSchema,
+  type ReviewResult,
+} from "@/lib/schema/juror";
 import { resolveWeights } from "@/lib/scoring";
 import type { ReviewWithScores } from "@/types/db";
 
@@ -77,6 +88,25 @@ export async function createReview(
       status: 400,
       error: parsed.error.issues[0]?.message ?? "Invalid review request.",
     };
+  }
+
+  // 2b. Cost guardrails (DailyPlan Day 18): reject oversized content and any
+  //     review whose estimated fan-out exceeds the token budget BEFORE spending
+  //     on model calls (Rules.md §1 cost discipline; §6 reject bad input with a
+  //     specific 4xx). The size cap is the same constant the schema enforces, so
+  //     this is defense-in-depth with a clearer message; the token budget guards
+  //     the whole five-juror fan-out (content × jurors + overhead).
+  const sizeDecision = checkContentSize(parsed.data.content_text);
+  if (!sizeDecision.ok) {
+    return { ok: false, status: 400, error: sizeDecision.message };
+  }
+  const budgetDecision = checkTokenBudget({
+    contentTokens: estimateTokens(parsed.data.content_text),
+    jurorCount: PERSONA_NAMES.length,
+    brandContextTokens: 0, // brand context is loaded server-side on Day 27.
+  });
+  if (!budgetDecision.ok) {
+    return { ok: false, status: 400, error: budgetDecision.message };
   }
 
   // 3. Enforce the per-plan rate limit BEFORE the expensive five-juror fan-out
@@ -160,6 +190,28 @@ export async function createReview(
       error: "We couldn't save your review. Please try again.",
     };
   }
+
+  // 7. Log the review's estimated usage for cost observability (DailyPlan Day
+  //    18). Redacted by construction — only IDs, counts, and derived scores are
+  //    logged, never the user's content, the model prompts/outputs, or a secret
+  //    (Rules.md §3/§6).
+  logReviewUsage(
+    estimateReviewUsage(parsed.data.content_text, PERSONA_NAMES.length),
+    {
+      op: "createReview",
+      companyId: deps.session.companyId,
+      reviewId: review.review_id,
+      model: review.model,
+      // `runReview` tags a mock model's name with a "(mock)" suffix, which is
+      // accurate whether or not a client was injected (the real client is built
+      // inside the orchestrator when none is passed).
+      isMock: review.model.includes("(mock)"),
+      verdict: review.verdict,
+      aggregateScore: review.aggregate_score,
+      jurorsOk: review.jurors.filter((j) => j.status === "ok").length,
+      jurorsError: review.jurors.filter((j) => j.status === "error").length,
+    },
+  );
 
   return { ok: true, status: 201, review };
 }

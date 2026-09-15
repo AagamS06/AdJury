@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SessionContext } from "@/lib/auth/session";
 import { getReviewRateUsage, type InsertReviewParams } from "@/lib/db/queries";
@@ -190,6 +190,14 @@ const VALID_BODY = {
 };
 
 describe("createReview rate limiting", () => {
+  // Silence the redacted usage log (Day 18) emitted on a successful review.
+  beforeEach(() => {
+    vi.spyOn(console, "info").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("blocks with 429 (and never persists) when the company is at its plan limit", async () => {
     const { calls, persist } = recordingPersist();
     const oldest = new Date(Date.now() - DAY_MS / 2).toISOString();

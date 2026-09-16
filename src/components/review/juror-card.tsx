@@ -52,8 +52,9 @@ export function JurorCard({
           </span>
         </div>
         <p className="mt-2 text-sm text-muted">
-          This juror couldn&apos;t return a valid result for this review. The
-          other jurors&apos; scores are unaffected.
+          This juror couldn&apos;t be scored for this review — it may have timed
+          out or returned an unusable result. The other jurors&apos; scores are
+          unaffected; try submitting again for a fresh take from this lens.
         </p>
       </article>
     );

@@ -9,6 +9,7 @@ import { computeAggregate, deriveVerdict } from "@/lib/scoring";
 import type { PersonaWeights } from "@/lib/schema/weights";
 import { getModelClient, type ModelClient } from "./client";
 import { PERSONAS, type Persona } from "./personas";
+import { platformGuidanceFor } from "./personas/platform-guidance";
 import {
   callWithResilience,
   classifyModelError,
@@ -21,17 +22,33 @@ const CONTENT_MARKER = "<<<CONTENT>>>";
 const CORRECTIVE_NUDGE =
   "Your previous response was not valid JSON matching the required schema. Return ONLY the JSON object, nothing else.";
 
-/** Assemble the user message for one persona from the review input. */
-function buildUserPrompt(input: ReviewInput, persona: Persona): string {
+/**
+ * Assemble the user message for one persona from the review input.
+ *
+ * For the platform-aware jurors (SEO, "stop scrolling") a platform-specific
+ * expectations block is injected so their judgement adapts to the selected
+ * channel (DailyPlan Day 20); other jurors' prompts are unchanged. Exported so
+ * the platform pass-through is unit-testable without a live model.
+ */
+export function buildUserPrompt(input: ReviewInput, persona: Persona): string {
   const brand = input.brand_context
     ? `Brand context / style guide:\n${input.brand_context}\n`
     : "No brand context provided — infer a reasonable professional baseline.\n";
+
+  const platformGuidance = platformGuidanceFor(persona.name, input.platform);
+  const platformBlock = platformGuidance
+    ? [
+        `Platform-specific expectations for this juror (target platform: ${input.platform}):`,
+        `${platformGuidance}\n`,
+      ]
+    : [];
 
   return [
     `Content type: ${input.content_type}`,
     `Platform: ${input.platform ?? "unspecified"}`,
     "",
     brand,
+    ...platformBlock,
     `Review the content between the delimiter lines below as the ${persona.title}.`,
     CONTENT_MARKER,
     input.content_text,

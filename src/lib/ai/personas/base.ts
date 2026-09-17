@@ -58,6 +58,25 @@ Confidence guidance (how sure you are of THIS score, not how good the content is
 - medium: a defensible judgement, but context or intent could reasonably shift it.
 - low:    limited signal — very short content, or missing brand/audience context.`.trim();
 
+/**
+ * Shared suggested-rewrite guidance (Day 21 — Week 3 calibration). The output
+ * contract already requires a rewrite, but gave the model no guardrails on WHAT
+ * the rewrite may contain, so it was free to invent facts. That is a real risk:
+ * the compliance juror could "fix" a claim by inventing substantiation or a
+ * disclaimer (adding new risk instead of removing it), and any juror could add
+ * numbers or product details that were never in the original. This fragment
+ * keeps every rewrite truthful to the submitted content and scoped to the
+ * juror's own lens (Rules.md §3 — the AI critiques, it does not fabricate).
+ */
+export const REWRITE_GUIDANCE = `
+Suggested-rewrite guidance:
+- Improve ONLY on your lens; keep the content's facts, offer, and intent intact.
+- Never invent claims, statistics, prices, features, names, or disclaimers that
+  are not already in the original — a rewrite must not add new risk or false
+  specifics.
+- If a claim is the problem, prefer softening or removing it over inventing
+  substantiation. If nothing needs changing on your lens, return the original.`.trim();
+
 /** Compose a full system prompt from a persona's role and lens-specific rubric. */
 export function composeSystemPrompt(args: {
   name: PersonaName;
@@ -72,6 +91,8 @@ export function composeSystemPrompt(args: {
     SHARED_ANCHORS,
     "",
     CONFIDENCE_GUIDANCE,
+    "",
+    REWRITE_GUIDANCE,
     "",
     OUTPUT_CONTRACT,
     "",

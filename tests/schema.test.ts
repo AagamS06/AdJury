@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { JurorResultSchema } from "@/lib/schema/juror";
 import { computeAggregate, deriveVerdict } from "@/lib/scoring";
 import type { JurorSlot } from "@/lib/schema/juror";
+import type { PersonaWeights } from "@/lib/schema/weights";
 
 const validJuror = {
   persona: "brand_voice_guardian" as const,
@@ -111,5 +112,87 @@ describe("scoring & verdict", () => {
     ];
     const agg = computeAggregate(jurors);
     expect(deriveVerdict(agg, jurors)).toBe("fail");
+  });
+
+  // --- Day 21 (Week 3 hardening): the compliance-veto edge cases that the
+  // Phase 2 acceptance criteria call out ("covering pass/revise/fail and the
+  // compliance veto") but that the cases above don't exercise directly. ---
+
+  it("vetoes to fail on a compliance score <= 2 even with no high-severity issue", () => {
+    // A very low compliance score is itself a veto, independent of any flag.
+    const jurors: JurorSlot[] = [
+      ok("brand_voice_guardian", 10),
+      ok("compliance_legal_flagger", 2),
+      ok("target_audience_fit", 10),
+      ok("seo_discoverability", 10),
+      ok("stop_scrolling", 10),
+    ];
+    const agg = computeAggregate(jurors);
+    expect(agg).toBeGreaterThanOrEqual(7.5); // aggregate alone would pass
+    expect(deriveVerdict(agg, jurors)).toBe("fail");
+  });
+
+  it("does NOT veto at compliance score 3 with no high-severity issue (<=2 boundary is exact)", () => {
+    const jurors: JurorSlot[] = [
+      ok("brand_voice_guardian", 10),
+      ok("compliance_legal_flagger", 3), // just above the veto floor, no flag
+      ok("target_audience_fit", 10),
+      ok("seo_discoverability", 10),
+      ok("stop_scrolling", 10),
+    ];
+    const agg = computeAggregate(jurors);
+    expect(deriveVerdict(agg, jurors)).toBe("pass");
+  });
+
+  it("does not veto when the compliance juror errored (veto needs an ok compliance result)", () => {
+    // A missing compliance opinion must not silently block or force-pass — the
+    // verdict falls through to the aggregate of the four healthy jurors.
+    const jurors: JurorSlot[] = [
+      ok("brand_voice_guardian", 9),
+      { persona: "compliance_legal_flagger", status: "error", error: "boom" },
+      ok("target_audience_fit", 9),
+      ok("seo_discoverability", 9),
+      ok("stop_scrolling", 9),
+    ];
+    const agg = computeAggregate(jurors);
+    expect(deriveVerdict(agg, jurors)).toBe("pass");
+  });
+
+  it("fails on a low aggregate (< 5.0) with no compliance flag at all", () => {
+    const jurors: JurorSlot[] = [
+      ok("brand_voice_guardian", 4),
+      ok("compliance_legal_flagger", 6), // fine on the compliance lens
+      ok("target_audience_fit", 3),
+      ok("seo_discoverability", 4),
+      ok("stop_scrolling", 3),
+    ];
+    const agg = computeAggregate(jurors);
+    expect(agg).toBeLessThan(5.0);
+    expect(deriveVerdict(agg, jurors)).toBe("fail");
+  });
+
+  it("cannot be weighted away: a compliance veto still fails even when compliance weight is 0", () => {
+    // Multi-tenant safety — a company can down-weight jurors (Day 16), but the
+    // compliance veto is a risk gate on the verdict, not a term in the weighted
+    // aggregate, so setting its weight to 0 must not disable it.
+    const noComplianceWeight: PersonaWeights = {
+      brand_voice_guardian: 0.25,
+      compliance_legal_flagger: 0,
+      target_audience_fit: 0.25,
+      seo_discoverability: 0.25,
+      stop_scrolling: 0.25,
+    };
+    const jurors: JurorSlot[] = [
+      ok("brand_voice_guardian", 10),
+      ok("compliance_legal_flagger", 1, [
+        { severity: "high", excerpt: "guaranteed", explanation: "risky" },
+      ]),
+      ok("target_audience_fit", 10),
+      ok("seo_discoverability", 10),
+      ok("stop_scrolling", 10),
+    ];
+    const agg = computeAggregate(jurors, noComplianceWeight);
+    expect(agg).toBe(10); // compliance excluded from the weighted mean
+    expect(deriveVerdict(agg, jurors)).toBe("fail"); // ...but still vetoed
   });
 });

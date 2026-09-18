@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { signOutAction } from "@/lib/auth/actions";
 import { requireSession } from "@/lib/auth/guard";
+import { needsOnboarding } from "@/lib/company/onboarding";
 
 /**
  * Dashboard shell (DailyPlan Day 4 — role-based access).
@@ -19,6 +21,14 @@ export default async function DashboardLayout({
 }) {
   const session = await requireSession();
   const isAdmin = session.role === "admin";
+
+  // First-admin onboarding gate (Day 22): guide an admin whose company hasn't
+  // been set up into `/onboarding` (a standalone route, so no redirect loop).
+  // Members are never redirected — their admin onboards the company; the app
+  // still works with the name set at signup.
+  if (isAdmin && needsOnboarding(session.company)) {
+    redirect("/onboarding");
+  }
 
   return (
     <div className="min-h-screen bg-canvas">

@@ -156,6 +156,7 @@ function sessionFor(plan: PlanTier): SessionContext {
       industry: null,
       plan_tier: plan,
       juror_weights: null,
+      onboarded_at: "2026-08-31T00:00:00.000Z",
       created_at: "2026-08-31T00:00:00.000Z",
     },
   };

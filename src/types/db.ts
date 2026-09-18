@@ -19,6 +19,8 @@ export interface CompanyRow {
   plan_tier: PlanTier;
   /** Per-company juror weights (Day 16); null = the equal default (0.2 each). */
   juror_weights: PersonaWeightsConfig | null;
+  /** When the first admin completed onboarding (Day 22); null = not yet onboarded. */
+  onboarded_at: string | null;
   created_at: string;
 }
 

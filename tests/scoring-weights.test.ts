@@ -250,6 +250,7 @@ function sessionWithWeights(
       industry: null,
       plan_tier: "free",
       juror_weights,
+      onboarded_at: "2026-08-31T00:00:00.000Z",
       created_at: "2026-08-31T00:00:00.000Z",
     },
   };
@@ -348,6 +349,7 @@ const COMPANY_ROW: CompanyRow = {
   industry: null,
   plan_tier: "free",
   juror_weights: null,
+  onboarded_at: "2026-08-31T00:00:00.000Z",
   created_at: "2026-08-31T00:00:00.000Z",
 };
 

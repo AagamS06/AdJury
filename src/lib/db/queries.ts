@@ -98,6 +98,44 @@ export async function updateCompanyJurorWeights(
   return data as CompanyRow;
 }
 
+export interface CompleteOnboardingParams {
+  name: string;
+  industry: string;
+  plan_tier: PlanTier;
+}
+
+/**
+ * Complete first-admin onboarding for a company (DailyPlan Day 22): set the
+ * name, industry, and plan tier, and stamp `onboarded_at` so the company reads
+ * as onboarded from then on. Tenancy is explicit and server-derived — `companyId`
+ * comes from the session, never the client (Rules.md §5) — and the fields are
+ * pre-validated by `CompanyOnboardingSchema` in the calling action (Rules.md §3).
+ * Runs under the service-role client because `companies` has no client write
+ * policy (writes are server-side, admin-gated), mirroring the Day 16 weights
+ * write path. `now` is injectable so the stamped timestamp is deterministic in
+ * tests.
+ */
+export async function completeCompanyOnboarding(
+  db: SupabaseClient,
+  companyId: string,
+  params: CompleteOnboardingParams,
+  now: Date = new Date(),
+): Promise<CompanyRow> {
+  const { data, error } = await db
+    .from("companies")
+    .update({
+      name: params.name,
+      industry: params.industry,
+      plan_tier: params.plan_tier,
+      onboarded_at: now.toISOString(),
+    })
+    .eq("id", companyId)
+    .select("*")
+    .single();
+  if (error) fail("completeCompanyOnboarding", error);
+  return data as CompanyRow;
+}
+
 // ── users ───────────────────────────────────────────────────────────────
 
 export async function getUserById(

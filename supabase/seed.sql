@@ -2,8 +2,8 @@
 -- NOTE: `users` references auth.users, so create the auth user first
 -- (via the Supabase dashboard or auth API) and swap in its UUID below.
 
-insert into companies (id, name, industry, plan_tier)
-values ('00000000-0000-0000-0000-000000000001', 'Acme Marketing', 'saas', 'pro')
+insert into companies (id, name, industry, plan_tier, onboarded_at)
+values ('00000000-0000-0000-0000-000000000001', 'Acme Marketing', 'saas', 'pro', now())
 on conflict (id) do nothing;
 
 insert into brand_profiles (company_id, tone_guide_text)

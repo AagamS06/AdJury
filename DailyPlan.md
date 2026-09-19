@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-09-17 (Day 21 — Week 3 hardening)
+> **Status:** Active · **Last updated:** 2026-09-18 (Day 22 — Company onboarding)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -115,8 +115,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 
 ## Week 4 — Multi-tenant foundations
 
-### Day 22 — Company onboarding
-- [ ] First-admin onboarding: create/name company, set industry + plan tier.
+### Day 22 — Company onboarding ✅
+- [x] First-admin onboarding: create/name company, set industry + plan tier. **Completed 2026-09-18.**
 - DoD: onboarding creates a usable company context.
 
 ### Day 23 — Team management UI

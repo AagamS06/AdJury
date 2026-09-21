@@ -1,8 +1,11 @@
 import { requireAdmin } from "@/lib/auth/guard";
 import { getSessionContext } from "@/lib/auth/session";
 import { createServerSupabase } from "@/lib/auth/supabase-server";
-import { listUsersByCompany } from "@/lib/db/queries";
+import { listInvitationsByCompany, listUsersByCompany } from "@/lib/db/queries";
+import { getInvitationsForCompany } from "@/lib/company/read-invitations";
 import { getTeamForCompany } from "@/lib/company/read-team";
+import { InvitationList } from "@/components/company/invitation-list";
+import { InviteForm } from "@/components/company/invite-form";
 import { TeamList, TeamSummaryLine } from "@/components/company/team-list";
 
 /**
@@ -32,6 +35,14 @@ export default async function TeamPage() {
     list: async (companyId) => {
       const db = await createServerSupabase();
       return listUsersByCompany(db, companyId);
+    },
+  });
+
+  const invites = await getInvitationsForCompany({
+    session: resolved,
+    list: async (companyId) => {
+      const db = await createServerSupabase();
+      return listInvitationsByCompany(db, companyId);
     },
   });
 
@@ -67,8 +78,33 @@ export default async function TeamPage() {
         )}
       </div>
 
-      <p className="mt-6 text-sm text-muted">
-        Inviting new members and changing roles arrive next (Days 24–25).
+      <section className="mt-12">
+        <h2 className="text-xl font-bold text-ink">Invitations</h2>
+        <p className="mt-1 max-w-2xl text-sm text-body">
+          Invite teammates by email to join {session.company.name}. They&apos;ll
+          get a link to create an account and start reviewing content.
+        </p>
+
+        <div className="mt-4">
+          <InviteForm />
+        </div>
+
+        <div className="mt-6">
+          {invites.ok ? (
+            <InvitationList invitations={invites.invitations} />
+          ) : (
+            <p
+              role="alert"
+              className="rounded-md border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger"
+            >
+              {invites.error}
+            </p>
+          )}
+        </div>
+      </section>
+
+      <p className="mt-8 text-sm text-muted">
+        Changing a member&apos;s role arrives next (Day 25).
       </p>
     </div>
   );

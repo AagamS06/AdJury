@@ -21,6 +21,7 @@ import type {
   BrandProfileRow,
   CompanyRow,
   ContentType,
+  InvitationRow,
   PersonaScoreRow,
   PlanTier,
   ReviewRow,
@@ -164,6 +165,26 @@ export async function listUsersByCompany(
   return (data as UserRow[] | null) ?? [];
 }
 
+/**
+ * Find a company member by email (case-insensitive), or null. Used to stop an
+ * admin from inviting someone who is already on the team (Day 24). Tenancy is
+ * explicit — `companyId` is server-derived (never the client — Rules.md §5).
+ */
+export async function findCompanyMemberByEmail(
+  db: SupabaseClient,
+  companyId: string,
+  email: string,
+): Promise<UserRow | null> {
+  const { data, error } = await db
+    .from("users")
+    .select("*")
+    .eq("company_id", companyId)
+    .ilike("email", email)
+    .maybeSingle();
+  if (error) fail("findCompanyMemberByEmail", error);
+  return (data as UserRow | null) ?? null;
+}
+
 export interface InsertUserParams {
   /** Must match an existing auth.users id (users.id references auth.users). */
   id: string;
@@ -233,6 +254,98 @@ export async function insertBrandProfile(
     .single();
   if (error) fail("insertBrandProfile", error);
   return data as BrandProfileRow;
+}
+
+// ── invitations ─────────────────────────────────────────────────────────
+
+export interface InsertInvitationParams {
+  company_id: string;
+  email: string;
+  role: UserRole;
+  /** SHA-256 hex of the raw token (the raw token is never stored — Day 24). */
+  token_hash: string;
+  invited_by: string;
+  expires_at: string;
+}
+
+/**
+ * Create a pending invitation. Runs under the service-role client (invitations
+ * has no client write policy — writes are server-side, admin-gated). The caller
+ * derives `company_id`/`invited_by` from the session, never the client
+ * (Rules.md §5), and passes only the token HASH.
+ */
+export async function insertInvitation(
+  db: SupabaseClient,
+  params: InsertInvitationParams,
+): Promise<InvitationRow> {
+  const { data, error } = await db
+    .from("invitations")
+    .insert({
+      company_id: params.company_id,
+      email: params.email,
+      role: params.role,
+      token_hash: params.token_hash,
+      invited_by: params.invited_by,
+      expires_at: params.expires_at,
+      status: "pending",
+    })
+    .select("*")
+    .single();
+  if (error) fail("insertInvitation", error);
+  return data as InvitationRow;
+}
+
+/**
+ * Look up an invitation by its token hash (the presented raw token is hashed
+ * first — Day 24). Returns null when no invite matches. Acceptance uses the
+ * service-role client because the invitee is typically not yet a company member
+ * (RLS would otherwise hide the row); the token itself is the bearer credential.
+ */
+export async function getInvitationByTokenHash(
+  db: SupabaseClient,
+  tokenHash: string,
+): Promise<InvitationRow | null> {
+  const { data, error } = await db
+    .from("invitations")
+    .select("*")
+    .eq("token_hash", tokenHash)
+    .maybeSingle();
+  if (error) fail("getInvitationByTokenHash", error);
+  return (data as InvitationRow | null) ?? null;
+}
+
+/** List a company's invitations, newest first (index: invitations(company_id, created_at desc)). */
+export async function listInvitationsByCompany(
+  db: SupabaseClient,
+  companyId: string,
+): Promise<InvitationRow[]> {
+  const { data, error } = await db
+    .from("invitations")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: false });
+  if (error) fail("listInvitationsByCompany", error);
+  return (data as InvitationRow[] | null) ?? [];
+}
+
+/**
+ * Mark an invitation accepted and stamp `accepted_at`. Scoped by id (the invite
+ * was already resolved from its token hash). `now` is injectable for
+ * deterministic tests.
+ */
+export async function markInvitationAccepted(
+  db: SupabaseClient,
+  id: string,
+  now: Date = new Date(),
+): Promise<InvitationRow> {
+  const { data, error } = await db
+    .from("invitations")
+    .update({ status: "accepted", accepted_at: now.toISOString() })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) fail("markInvitationAccepted", error);
+  return data as InvitationRow;
 }
 
 // ── reviews + persona_scores ────────────────────────────────────────────

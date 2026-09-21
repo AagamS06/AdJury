@@ -11,6 +11,9 @@ export type PlanTier = "free" | "pro" | "enterprise";
 export type UserRole = "admin" | "member";
 export type ContentType = "ad_copy" | "social_post" | "email" | "landing_page";
 export type PersonaScoreStatus = "ok" | "error";
+/** Stored lifecycle of an invitation row (Day 24). Expiry is derived from
+ * `expires_at`, not stored as a status, so a row is never "stuck" expired. */
+export type InvitationStatus = "pending" | "accepted" | "revoked";
 
 export interface CompanyRow {
   id: string;
@@ -29,6 +32,21 @@ export interface UserRow {
   company_id: string;
   email: string;
   role: UserRole;
+  created_at: string;
+}
+
+export interface InvitationRow {
+  id: string;
+  company_id: string;
+  email: string;
+  role: UserRole;
+  /** SHA-256 hex of the raw token; the raw token is never stored (Day 24). */
+  token_hash: string;
+  status: InvitationStatus;
+  /** The admin who sent the invite; null if that user was later removed. */
+  invited_by: string | null;
+  expires_at: string;
+  accepted_at: string | null;
   created_at: string;
 }
 

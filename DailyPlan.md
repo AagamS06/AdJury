@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-09-20 (Day 24 — Invitations)
+> **Status:** Active · **Last updated:** 2026-09-21 (Day 25 — Role management)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -127,8 +127,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Invite-by-email token flow → join existing company (email send may be stubbed/logged). **Completed 2026-09-20.**
 - DoD: an invite token adds a member to the right company.
 
-### Day 25 — Role management
-- [ ] Admin can promote/demote members; enforced server-side.
+### Day 25 — Role management ✅
+- [x] Admin can promote/demote members; enforced server-side. **Completed 2026-09-21.**
 - DoD: role changes persist and are authorized on the server.
 
 ### Day 26 — Brand profile CRUD

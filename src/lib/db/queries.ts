@@ -261,9 +261,10 @@ export interface UpsertBrandProfileParams {
 }
 
 /**
- * Insert a brand profile for a company. (A richer upsert keyed on an existing
- * row lands with the brand-profile CRUD work in Week 4; for now a company has
- * at most one profile and this creates it.)
+ * Insert the first brand profile for a company (DailyPlan Day 26). A company has
+ * at most one guide; when one already exists, callers update it in place via
+ * `updateBrandProfile` instead. `company_id` must come from the session, never
+ * the client (Rules.md §5).
  */
 export async function insertBrandProfile(
   db: SupabaseClient,
@@ -279,6 +280,38 @@ export async function insertBrandProfile(
     .select("*")
     .single();
   if (error) fail("insertBrandProfile", error);
+  return data as BrandProfileRow;
+}
+
+export interface UpdateBrandProfileParams {
+  tone_guide_text: string | null;
+}
+
+/**
+ * Update an existing brand profile's tone guide in place (DailyPlan Day 26).
+ * Scoped by BOTH `id` and `company_id` so a service-role write can never touch
+ * another company's row even if handed a foreign id (Rules.md §5) — the same
+ * defense-in-depth as `updateUserRole`. `updated_at` is bumped explicitly since
+ * an UPDATE does not re-run the column default. `embedding_ref` is intentionally
+ * left untouched; the brand-voice cache is Days 29–30.
+ */
+export async function updateBrandProfile(
+  db: SupabaseClient,
+  id: string,
+  companyId: string,
+  params: UpdateBrandProfileParams,
+): Promise<BrandProfileRow> {
+  const { data, error } = await db
+    .from("brand_profiles")
+    .update({
+      tone_guide_text: params.tone_guide_text,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("company_id", companyId)
+    .select("*")
+    .single();
+  if (error) fail("updateBrandProfile", error);
   return data as BrandProfileRow;
 }
 

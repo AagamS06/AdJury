@@ -185,6 +185,32 @@ export async function findCompanyMemberByEmail(
   return (data as UserRow | null) ?? null;
 }
 
+/**
+ * Change a user's role (DailyPlan Day 25 — promote/demote). Scoped by BOTH
+ * `id` and `company_id`, both server-derived (never the client — Rules.md §5),
+ * so a service-role write can never touch a user in another company even if
+ * handed a foreign id. Runs under the service-role client because `users` has
+ * no client write policy (writes are server-side, admin-gated). The authz
+ * (admin-only) and last-admin guards live in `update-role.ts`; this helper just
+ * writes the already-validated role.
+ */
+export async function updateUserRole(
+  db: SupabaseClient,
+  companyId: string,
+  userId: string,
+  role: UserRole,
+): Promise<UserRow> {
+  const { data, error } = await db
+    .from("users")
+    .update({ role })
+    .eq("id", userId)
+    .eq("company_id", companyId)
+    .select("*")
+    .single();
+  if (error) fail("updateUserRole", error);
+  return data as UserRow;
+}
+
 export interface InsertUserParams {
   /** Must match an existing auth.users id (users.id references auth.users). */
   id: string;

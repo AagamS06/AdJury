@@ -12,11 +12,15 @@ import {
   getUserById,
   insertInvitation,
   insertUser,
+  listUsersByCompany,
   markInvitationAccepted,
+  updateUserRole,
 } from "@/lib/db/queries";
 import { serverClient } from "@/lib/db/supabase";
 import { acceptInvitation } from "./accept-invitation";
 import { createInvitation } from "./create-invitation";
+import { changeMemberRole } from "./update-role";
+import { roleLabel } from "./team-view";
 import {
   hashInviteToken,
   inviteAcceptUrl,
@@ -257,4 +261,50 @@ export async function signUpViaInviteAction(
   }
 
   redirect("/dashboard");
+}
+
+// ── role management (DailyPlan Day 25) ─────────────────────────────────────
+
+export interface RoleChangeState {
+  error?: string;
+  /** Confirmation copy, set after a successful change. */
+  notice?: string;
+}
+
+/**
+ * Admin promote/demote action. `requireAdmin()` re-derives the caller
+ * server-side (a member/anon caller is redirected), and the change core
+ * validates the input, resolves the target within the caller's own company,
+ * enforces the last-admin guard, and writes under the service-role client
+ * (`users` has no client write policy). The company id comes from the resolved
+ * session, never the form (Rules.md §5). On success the role change persists
+ * and `/team` is revalidated so the table reflects it.
+ */
+export async function changeMemberRoleAction(
+  _prev: RoleChangeState,
+  formData: FormData,
+): Promise<RoleChangeState> {
+  const session = await requireAdmin();
+  const admin = serverClient();
+
+  const result = await changeMemberRole({
+    session,
+    input: {
+      userId: field(formData, "userId"),
+      role: field(formData, "role"),
+    },
+    listMembers: (companyId) => listUsersByCompany(admin, companyId),
+    update: ({ companyId, userId, role }) =>
+      updateUserRole(admin, companyId, userId, role),
+  });
+
+  if (!result.ok) return { error: result.error };
+
+  revalidatePath("/team");
+  if (!result.changed) {
+    return { notice: `That teammate is already ${roleLabel(result.user.role).toLowerCase()}.` };
+  }
+  return {
+    notice: `${result.user.email} is now ${roleLabel(result.user.role).toLowerCase()}.`,
+  };
 }

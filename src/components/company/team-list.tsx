@@ -1,12 +1,15 @@
 import type { UserRow } from "@/types/db";
 import { summarizeTeam, toTeamRoster } from "@/lib/company/team-view";
+import { RoleActions } from "@/components/company/role-actions";
 
 /**
  * TeamList (DailyPlan Day 23, Design.md §5 "Tables/history"): the company's
  * members as a quiet, bordered table — email, role, and joined date — admins
- * listed first. A pure, hook-free presentational component: it takes the
- * company-scoped `UserRow[]` the server page already loaded (tenant-safe by
- * construction) and the signed-in admin's id so it can mark their own row.
+ * listed first. It takes the company-scoped `UserRow[]` the server page already
+ * loaded (tenant-safe by construction) and the signed-in admin's id so it can
+ * mark their own row. Each row carries a promote/demote control (Day 25); the
+ * control is a small client island (`RoleActions`), but the change is
+ * authorized server-side — the table is not the trust boundary (Rules.md §5).
  *
  * Display logic lives in `team-view.ts`; colour never travels alone (Design.md
  * §6): the role badge carries its word, and the "You" marker is a text badge.
@@ -32,6 +35,7 @@ export function TeamList({
   }
 
   const rows = toTeamRoster(members, currentUserId);
+  const { admins } = summarizeTeam(members);
 
   return (
     <div className="overflow-hidden rounded-md border border-border bg-surface shadow-[0_1px_2px_rgba(11,11,15,.06)]">
@@ -50,6 +54,9 @@ export function TeamList({
               </th>
               <th scope="col" className="px-4 py-3 font-semibold">
                 Joined
+              </th>
+              <th scope="col" className="px-4 py-3 font-semibold">
+                <span className="sr-only">Manage role</span>
               </th>
             </tr>
           </thead>
@@ -81,6 +88,14 @@ export function TeamList({
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-body">
                   {row.joined}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <RoleActions
+                    userId={row.id}
+                    email={row.email}
+                    role={row.role}
+                    isOnlyAdmin={row.role === "admin" && admins === 1}
+                  />
                 </td>
               </tr>
             ))}

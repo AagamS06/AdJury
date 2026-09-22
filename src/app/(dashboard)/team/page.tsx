@@ -19,7 +19,8 @@ import { TeamList, TeamSummaryLine } from "@/components/company/team-list";
  * request-scoped anon client so RLS is the primary tenancy guard, mirroring the
  * Day 11 history page. `getTeamForCompany` re-checks the admin role as
  * defense-in-depth. A load failure surfaces a plain-language message rather than
- * crashing (Rules.md §6). Role management (promote/demote) is Day 25.
+ * crashing (Rules.md §6). Each member row carries a promote/demote control
+ * (Day 25); the change is authorized server-side via `changeMemberRole`.
  */
 export const dynamic = "force-dynamic";
 
@@ -103,9 +104,6 @@ export default async function TeamPage() {
         </div>
       </section>
 
-      <p className="mt-8 text-sm text-muted">
-        Changing a member&apos;s role arrives next (Day 25).
-      </p>
     </div>
   );
 }

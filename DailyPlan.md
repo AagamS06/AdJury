@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-09-21 (Day 25 — Role management)
+> **Status:** Active · **Last updated:** 2026-09-22 (Day 26 — Brand profile CRUD)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -131,8 +131,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Admin can promote/demote members; enforced server-side. **Completed 2026-09-21.**
 - DoD: role changes persist and are authorized on the server.
 
-### Day 26 — Brand profile CRUD
-- [ ] Admin UI to create/edit the tone/style guide (`brand_profiles`).
+### Day 26 — Brand profile CRUD ✅
+- [x] Admin UI to create/edit the tone/style guide (`brand_profiles`). **Completed 2026-09-22.**
 - DoD: brand guide saves; admin-only via RLS.
 
 ### Day 27 — Brand voice in reviews

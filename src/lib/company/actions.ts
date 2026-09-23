@@ -4,21 +4,26 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/guard";
+import { getSessionContext } from "@/lib/auth/session";
 import { createServerSupabase } from "@/lib/auth/supabase-server";
 import {
   completeCompanyOnboarding,
   findCompanyMemberByEmail,
+  getBrandProfileByCompany,
   getInvitationByTokenHash,
   getUserById,
+  insertBrandProfile,
   insertInvitation,
   insertUser,
   listUsersByCompany,
   markInvitationAccepted,
+  updateBrandProfile,
   updateUserRole,
 } from "@/lib/db/queries";
 import { serverClient } from "@/lib/db/supabase";
 import { acceptInvitation } from "./accept-invitation";
 import { createInvitation } from "./create-invitation";
+import { saveBrandProfile } from "./save-brand-profile";
 import { changeMemberRole } from "./update-role";
 import { roleLabel } from "./team-view";
 import {
@@ -79,6 +84,64 @@ export async function completeOnboardingAction(
   }
 
   redirect("/dashboard");
+}
+
+// ── brand profile (DailyPlan Day 26) ──────────────────────────────────────
+
+/**
+ * State for the brand-profile editor. On success it carries a plain confirmation
+ * (whether the guide was created or updated); on failure, a plain message.
+ */
+export interface BrandProfileFormState {
+  error?: string;
+  notice?: string;
+}
+
+/**
+ * Save (create or edit) the company's tone/style guide (DailyPlan Day 26).
+ * `requireAdmin()` re-derives the caller server-side (a member/anon caller is
+ * redirected), and the save core validates the input and resolves create-vs-edit
+ * against the company's own guide. The company id comes from the resolved
+ * session, never the form (Rules.md §5).
+ *
+ * Unlike the other company writes (companies/users/invitations have no client
+ * write policy, so they use the service role), `brand_profiles` has an
+ * admin-only RLS write policy — so the write goes through the request-scoped
+ * client and RLS is the DB-level guard, satisfying the DoD "admin-only via RLS".
+ * The core's 403 + this `requireAdmin()` gate are defense-in-depth.
+ */
+export async function saveBrandProfileAction(
+  _prev: BrandProfileFormState,
+  formData: FormData,
+): Promise<BrandProfileFormState> {
+  await requireAdmin();
+
+  // Re-resolve for the core (owns the 401/403/500 mapping); the guard above has
+  // already redirected any non-admin, so this is a non-null admin here.
+  const session = await getSessionContext().catch(() => null);
+  const db = await createServerSupabase();
+
+  const result = await saveBrandProfile({
+    session,
+    input: { tone_guide_text: field(formData, "tone_guide_text") },
+    getExisting: (companyId) => getBrandProfileByCompany(db, companyId),
+    insert: ({ companyId, toneGuideText }) =>
+      insertBrandProfile(db, {
+        company_id: companyId,
+        tone_guide_text: toneGuideText,
+      }),
+    update: ({ id, companyId, toneGuideText }) =>
+      updateBrandProfile(db, id, companyId, { tone_guide_text: toneGuideText }),
+  });
+
+  if (!result.ok) return { error: result.error };
+
+  revalidatePath("/brand");
+  return {
+    notice: result.created
+      ? "Brand guide saved. Juror 1 will now review content against it."
+      : "Brand guide updated.",
+  };
 }
 
 // ── invitations (DailyPlan Day 24) ────────────────────────────────────────

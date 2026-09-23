@@ -97,21 +97,28 @@ export interface ReviewTokenInputs {
   contentTokens: number;
   /** Number of juror calls the content fans out to. */
   jurorCount: number;
-  /** Estimated tokens of brand context injected into each juror (0 today; Day 27). */
+  /**
+   * Estimated tokens of the company's brand context. Since Day 27 this is
+   * injected into a SINGLE juror (the Brand Voice Guardian), not the whole
+   * fan-out, so it is added ONCE rather than multiplied by the juror count.
+   * 0 (the default) when the company has no stored brand guide.
+   */
   brandContextTokens?: number;
 }
 
 /**
- * Estimate the total INPUT tokens across a review's fan-out: each juror sees the
- * content, the per-juror prompt overhead, and any brand context, so the cost
- * scales with the juror count.
+ * Estimate the total INPUT tokens across a review's fan-out: every juror sees
+ * the content plus the per-juror prompt overhead, so that part scales with the
+ * juror count. The brand context is scoped to one juror (DailyPlan Day 27), so
+ * it is added a single time on top — this keeps the budget from contradicting
+ * the advertised content limit even when a company has a large brand guide.
  */
 export function estimateReviewInputTokens(inputs: ReviewTokenInputs): number {
   const jurorCount = Math.max(0, Math.floor(inputs.jurorCount));
   const contentTokens = Math.max(0, Math.floor(inputs.contentTokens));
   const brandContextTokens = Math.max(0, Math.floor(inputs.brandContextTokens ?? 0));
-  const perJuror = contentTokens + PROMPT_OVERHEAD_TOKENS_PER_JUROR + brandContextTokens;
-  return perJuror * jurorCount;
+  const perJuror = contentTokens + PROMPT_OVERHEAD_TOKENS_PER_JUROR;
+  return perJuror * jurorCount + brandContextTokens;
 }
 
 /** Result of the token-budget guard. */

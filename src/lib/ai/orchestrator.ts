@@ -22,18 +22,34 @@ const CONTENT_MARKER = "<<<CONTENT>>>";
 const CORRECTIVE_NUDGE =
   "Your previous response was not valid JSON matching the required schema. Return ONLY the JSON object, nothing else.";
 
+/** The juror that reviews content against the company's brand guide (PRD §5). */
+const BRAND_JUROR: Persona["name"] = "brand_voice_guardian";
+
 /**
  * Assemble the user message for one persona from the review input.
+ *
+ * Brand context is scoped to the Brand Voice Guardian only (DailyPlan Day 27):
+ * it is the one juror whose lens is consistency with the company's tone/style
+ * guide (PRD §5, Rules.md §3), so the stored guide is injected into its prompt
+ * and no other's. Sending the guide to all five jurors would waste tokens on
+ * lenses that ignore it (Rules.md §1 cost discipline) and add noise to their
+ * judgement. When no guide is stored, the brand juror is told to infer a
+ * professional baseline (matching its system prompt).
  *
  * For the platform-aware jurors (SEO, "stop scrolling") a platform-specific
  * expectations block is injected so their judgement adapts to the selected
  * channel (DailyPlan Day 20); other jurors' prompts are unchanged. Exported so
- * the platform pass-through is unit-testable without a live model.
+ * the brand + platform pass-through is unit-testable without a live model.
  */
 export function buildUserPrompt(input: ReviewInput, persona: Persona): string {
-  const brand = input.brand_context
-    ? `Brand context / style guide:\n${input.brand_context}\n`
-    : "No brand context provided — infer a reasonable professional baseline.\n";
+  const brandBlock =
+    persona.name === BRAND_JUROR
+      ? [
+          input.brand_context
+            ? `Brand context / style guide:\n${input.brand_context}\n`
+            : "No brand context provided — infer a reasonable professional baseline.\n",
+        ]
+      : [];
 
   const platformGuidance = platformGuidanceFor(persona.name, input.platform);
   const platformBlock = platformGuidance
@@ -47,7 +63,7 @@ export function buildUserPrompt(input: ReviewInput, persona: Persona): string {
     `Content type: ${input.content_type}`,
     `Platform: ${input.platform ?? "unspecified"}`,
     "",
-    brand,
+    ...brandBlock,
     ...platformBlock,
     `Review the content between the delimiter lines below as the ${persona.title}.`,
     CONTENT_MARKER,

@@ -66,6 +66,22 @@ export function toneGuideText(
   return profile?.tone_guide_text ?? "";
 }
 
+/**
+ * The brand guide to inject into a review as `brand_context` (DailyPlan Day 27),
+ * or `null` when the company has no usable guide. Trims first so a
+ * whitespace-only row reads as "not set" (mirrors `hasBrandProfile`) and the
+ * Brand Voice Guardian falls back to inferring a professional baseline rather
+ * than being handed an empty guide. The full stored guide is passed verbatim
+ * here; the brand-voice summary/embedding cache that avoids reprocessing it
+ * every review is Days 29–30.
+ */
+export function resolveBrandContext(
+  profile: Pick<BrandProfileRow, "tone_guide_text"> | null,
+): string | null {
+  const text = (profile?.tone_guide_text ?? "").trim();
+  return text.length > 0 ? text : null;
+}
+
 /** Display date for when the guide was last saved (invalid/absent → null). */
 export function brandProfileUpdatedAt(
   profile: Pick<BrandProfileRow, "updated_at"> | null,

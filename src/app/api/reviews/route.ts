@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/auth/supabase-server";
 import { getSessionContext } from "@/lib/auth/session";
 import {
+  getBrandProfileByCompany,
   getReviewRateUsage,
   insertReviewWithScores,
   listReviewsByCompany,
@@ -53,6 +54,14 @@ export async function POST(request: Request): Promise<Response> {
     getRateUsage: async (companyId, sinceIso) => {
       const db = await createServerSupabase();
       return getReviewRateUsage(db, companyId, sinceIso);
+    },
+    // Brand voice in reviews (Day 27): load the company's stored tone guide via
+    // the request-scoped anon client (RLS scopes it to the company; the
+    // session's companyId is also passed explicitly). The resolved guide is
+    // injected into the Brand Voice Guardian's prompt.
+    getBrandProfile: async (companyId) => {
+      const db = await createServerSupabase();
+      return getBrandProfileByCompany(db, companyId);
     },
   });
 

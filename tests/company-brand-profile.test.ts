@@ -7,6 +7,7 @@ import {
   brandProfileUpdatedAt,
   firstBrandProfileIssue,
   hasBrandProfile,
+  resolveBrandContext,
   toneGuideText,
 } from "@/lib/company/brand-profile";
 import {
@@ -145,6 +146,15 @@ describe("brand-profile display helpers", () => {
     expect(toneGuideText(null)).toBe("");
     expect(toneGuideText({ tone_guide_text: null })).toBe("");
     expect(toneGuideText({ tone_guide_text: "Guide" })).toBe("Guide");
+  });
+
+  it("resolveBrandContext trims to the guide text or null when unusable (Day 27)", () => {
+    expect(resolveBrandContext(null)).toBeNull();
+    expect(resolveBrandContext({ tone_guide_text: null })).toBeNull();
+    expect(resolveBrandContext({ tone_guide_text: "   \n " })).toBeNull();
+    expect(resolveBrandContext({ tone_guide_text: "  Measured, expert.  " })).toBe(
+      "Measured, expert.",
+    );
   });
 
   it("brandProfileUpdatedAt formats a valid date and returns null otherwise", () => {

@@ -4,7 +4,7 @@ import type { SessionContext } from "@/lib/auth/session";
 import type { InsertReviewParams } from "@/lib/db/queries";
 import { createReview } from "@/lib/reviews/create-review";
 import { PERSONA_NAMES } from "@/lib/schema/juror";
-import type { ReviewWithScores } from "@/types/db";
+import type { BrandProfileRow, ReviewWithScores } from "@/types/db";
 
 /**
  * Endpoint logic for POST /api/reviews (DailyPlan Day 5), exercised with the
@@ -223,5 +223,149 @@ describe("createReview (POST /api/reviews)", () => {
 
     expect(result).toMatchObject({ ok: false, status: 500 });
     spy.mockRestore();
+  });
+});
+
+/**
+ * Brand voice in reviews (DailyPlan Day 27). The company's stored brand guide is
+ * loaded server-side (scoped to the session company, never the client — Rules.md
+ * §5) and injected into the Brand Voice Guardian's prompt only. A recording
+ * client captures each juror's prompt so we can prove the guide reaches juror 1
+ * and no one else, and that a read failure fails open.
+ */
+describe("createReview — brand context (Day 27)", () => {
+  const BRAND_LINE = "Brand context / style guide:";
+  const GUIDE = "Tone: measured, expert, trustworthy. Avoid hype.";
+
+  function brandRow(overrides: Partial<BrandProfileRow> = {}): BrandProfileRow {
+    return {
+      id: "33333333-3333-3333-3333-333333333333",
+      company_id: SESSION.companyId,
+      tone_guide_text: GUIDE,
+      embedding_ref: null,
+      updated_at: "2026-09-22T00:00:00.000Z",
+      ...overrides,
+    };
+  }
+
+  /** A client that records every prompt and always returns valid juror JSON. */
+  function recordingClient() {
+    const calls: { persona: string; user: string }[] = [];
+    const client: ModelClient = {
+      model: "test-model",
+      isMock: true,
+      complete: async ({ persona, user }) => {
+        calls.push({ persona, user });
+        return JSON.stringify({
+          persona,
+          score: 8,
+          confidence: "high",
+          summary: "Reads cleanly on this lens.",
+          issues: [],
+          suggested_rewrite: "A sharper version of the same content.",
+        });
+      },
+    };
+    const promptFor = (persona: string) =>
+      calls.find((c) => c.persona === persona)?.user ?? "";
+    return { client, promptFor };
+  }
+
+  beforeEach(() => {
+    vi.spyOn(console, "info").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("loads the stored guide and injects it into the Brand Voice Guardian only", async () => {
+    const { persist } = recordingPersist();
+    const { client, promptFor } = recordingClient();
+    const companyIds: string[] = [];
+
+    const result = await createReview(VALID_BODY, {
+      session: SESSION,
+      persist,
+      client,
+      getBrandProfile: async (companyId) => {
+        companyIds.push(companyId);
+        return brandRow();
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    // Tenancy: the guide was read for the SESSION company, never a client value.
+    expect(companyIds).toEqual([SESSION.companyId]);
+    // Juror 1 sees the guide; the other four never do.
+    expect(promptFor("brand_voice_guardian")).toContain(BRAND_LINE);
+    expect(promptFor("brand_voice_guardian")).toContain(GUIDE);
+    for (const other of [
+      "compliance_legal_flagger",
+      "target_audience_fit",
+      "seo_discoverability",
+      "stop_scrolling",
+    ]) {
+      expect(promptFor(other)).not.toContain(GUIDE);
+    }
+  });
+
+  it("runs with no brand context when the company has no stored guide", async () => {
+    const { persist } = recordingPersist();
+    const { client, promptFor } = recordingClient();
+
+    const result = await createReview(VALID_BODY, {
+      session: SESSION,
+      persist,
+      client,
+      getBrandProfile: async () => null,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(promptFor("brand_voice_guardian")).toContain("No brand context provided");
+    expect(promptFor("brand_voice_guardian")).not.toContain(BRAND_LINE);
+  });
+
+  it("treats a whitespace-only stored guide as no brand context", async () => {
+    const { persist } = recordingPersist();
+    const { client, promptFor } = recordingClient();
+
+    const result = await createReview(VALID_BODY, {
+      session: SESSION,
+      persist,
+      client,
+      getBrandProfile: async () => brandRow({ tone_guide_text: "   \n  " }),
+    });
+
+    expect(result.ok).toBe(true);
+    expect(promptFor("brand_voice_guardian")).toContain("No brand context provided");
+  });
+
+  it("fails open when the brand profile read throws (review still runs)", async () => {
+    const { calls, persist } = recordingPersist();
+    const { client } = recordingClient();
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await createReview(VALID_BODY, {
+      session: SESSION,
+      persist,
+      client,
+      getBrandProfile: async () => {
+        throw new Error("brand read boom");
+      },
+    });
+
+    // A read blip degrades to a brand-less review, not a failed request.
+    expect(result.ok).toBe(true);
+    expect(calls).toHaveLength(1);
+    // The failure was logged with redacted context (no content/secret).
+    expect(errSpy).toHaveBeenCalledWith(
+      "brand profile read failed (failing open)",
+      expect.objectContaining({ companyId: SESSION.companyId }),
+    );
+    const [, meta] = errSpy.mock.calls.find(
+      ([msg]) => msg === "brand profile read failed (failing open)",
+    ) ?? [];
+    expect(JSON.stringify(meta)).not.toContain(VALID_BODY.content_text);
+    errSpy.mockRestore();
   });
 });

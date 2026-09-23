@@ -15,6 +15,7 @@ import {
   type ReviewUsageEstimate,
   type ReviewUsageLogMeta,
 } from "@/lib/ai/cost";
+import { MAX_TONE_GUIDE_CHARS } from "@/lib/company/brand-profile";
 
 /**
  * Cost guardrails (DailyPlan Day 18). Pure logic — no request, no model, no DB.
@@ -69,13 +70,15 @@ describe("checkContentSize", () => {
 });
 
 describe("estimateReviewInputTokens", () => {
-  it("scales content + overhead + brand context by the juror count", () => {
+  it("scales content + overhead by the juror count and adds brand context once", () => {
+    // Brand context is injected into a single juror (Day 27), so it is counted
+    // once on top of the fan-out, not multiplied across every juror.
     const est = estimateReviewInputTokens({
       contentTokens: 100,
       jurorCount: 5,
       brandContextTokens: 20,
     });
-    expect(est).toBe((100 + PROMPT_OVERHEAD_TOKENS_PER_JUROR + 20) * 5);
+    expect(est).toBe((100 + PROMPT_OVERHEAD_TOKENS_PER_JUROR) * 5 + 20);
   });
 
   it("treats a missing brand-context value as 0 and floors negatives", () => {
@@ -99,11 +102,29 @@ describe("checkTokenBudget", () => {
     if (decision.ok) expect(decision.estimatedInputTokens).toBeLessThanOrEqual(MAX_REVIEW_INPUT_TOKENS);
   });
 
-  it("rejects a fan-out over budget (e.g. once brand context is added) as `over_budget`", () => {
+  it("still allows a max-length review with a max-size brand guide (Day 27)", () => {
+    // Since brand context is scoped to one juror and counted once, even the
+    // largest allowed guide can't push a max-length review over budget — the
+    // budget must never contradict the advertised content + guide limits.
     const decision = checkTokenBudget({
       contentTokens: estimateTokens("x".repeat(MAX_CONTENT_CHARS)),
       jurorCount: 5,
-      brandContextTokens: 2_000,
+      brandContextTokens: estimateTokens("g".repeat(MAX_TONE_GUIDE_CHARS)),
+    });
+    expect(decision.ok).toBe(true);
+    if (decision.ok) {
+      expect(decision.estimatedInputTokens).toBeLessThanOrEqual(MAX_REVIEW_INPUT_TOKENS);
+    }
+  });
+
+  it("rejects a genuinely oversized fan-out as `over_budget`", () => {
+    // The budget still enforces a hard ceiling on the total fan-out (an unusually
+    // large brand context here — beyond the real guide cap — stands in for any
+    // future growth in per-review cost, e.g. more jurors).
+    const decision = checkTokenBudget({
+      contentTokens: estimateTokens("x".repeat(MAX_CONTENT_CHARS)),
+      jurorCount: 5,
+      brandContextTokens: 8_000,
     });
     expect(decision.ok).toBe(false);
     if (!decision.ok) {

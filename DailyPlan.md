@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-09-23 (Day 27 — Brand voice in reviews)
+> **Status:** Active · **Last updated:** 2026-09-24 (Day 28 — Week 4 hardening)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -139,8 +139,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Pass the stored brand guide as `brand_context` to Juror 1. **Completed 2026-09-23.**
 - DoD: reviews reference the company's brand profile.
 
-### Day 28 — Week 4 hardening
-- [ ] Tests + review; Memory.md; Week 4 summary.
+### Day 28 — Week 4 hardening ✅
+- [x] Tests + review; Memory.md; Week 4 summary. **Completed 2026-09-24.**
 - DoD: tests green; Memory.md current.
 
 ---

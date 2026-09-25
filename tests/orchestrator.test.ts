@@ -134,6 +134,61 @@ describe("runReview — platform pass-through end-to-end (Day 20)", () => {
   });
 });
 
+describe("runReview — brand context is scoped to the Brand Voice Guardian (Day 27)", () => {
+  const BRAND_LINE = "Brand context / style guide:";
+  const NO_BRAND_NOTE = "No brand context provided";
+  const GUIDE = "Tone: measured, expert, trustworthy. Avoid hype and slang.";
+
+  it("injects the stored guide into ONLY the brand juror's prompt", async () => {
+    const { client, callsFor } = recordingClient();
+    await runReview(input({ brand_context: GUIDE }), { client, resilience: FAST });
+
+    const brandPrompt = callsFor("brand_voice_guardian")[0].user;
+    expect(brandPrompt).toContain(BRAND_LINE);
+    expect(brandPrompt).toContain(GUIDE);
+
+    // No other juror sees the guide text or any brand block — brand voice is
+    // juror 1's lens alone (Rules.md §3), and sending it to all five would waste
+    // tokens on lenses that ignore it (Rules.md §1).
+    for (const other of [
+      "compliance_legal_flagger",
+      "target_audience_fit",
+      "seo_discoverability",
+      "stop_scrolling",
+    ] as const) {
+      const prompt = callsFor(other)[0].user;
+      expect(prompt).not.toContain(BRAND_LINE);
+      expect(prompt).not.toContain(GUIDE);
+      expect(prompt).not.toContain(NO_BRAND_NOTE);
+    }
+  });
+
+  it("tells only the brand juror to infer a baseline when no guide is stored", async () => {
+    const { client, callsFor } = recordingClient();
+    await runReview(input({ brand_context: null }), { client, resilience: FAST });
+
+    expect(callsFor("brand_voice_guardian")[0].user).toContain(NO_BRAND_NOTE);
+    for (const other of [
+      "compliance_legal_flagger",
+      "target_audience_fit",
+      "seo_discoverability",
+      "stop_scrolling",
+    ] as const) {
+      expect(callsFor(other)[0].user).not.toContain(NO_BRAND_NOTE);
+    }
+  });
+
+  it("matches what buildUserPrompt produces for the brand juror", async () => {
+    const { client, callsFor } = recordingClient();
+    const reviewInput = input({ brand_context: GUIDE });
+    await runReview(reviewInput, { client, resilience: FAST });
+    const brand = PERSONAS.find((p) => p.name === "brand_voice_guardian")!;
+    expect(callsFor("brand_voice_guardian")[0].user).toBe(
+      buildUserPrompt(reviewInput, brand),
+    );
+  });
+});
+
 describe("runReview — corrective nudge is output-only (Day 19)", () => {
   let warnSpy: ReturnType<typeof vi.spyOn>;
   let errorSpy: ReturnType<typeof vi.spyOn>;

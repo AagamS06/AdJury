@@ -23,6 +23,7 @@ import {
 } from "@/lib/ai/cost";
 import { runReview } from "@/lib/ai/orchestrator";
 import type { SessionContext } from "@/lib/auth/session";
+import { resolveBrandContext } from "@/lib/company/brand-profile";
 import type { InsertReviewParams, ReviewRateUsage } from "@/lib/db/queries";
 import {
   evaluateRateLimit,
@@ -37,7 +38,7 @@ import {
   type ReviewResult,
 } from "@/lib/schema/juror";
 import { resolveWeights } from "@/lib/scoring";
-import type { ReviewWithScores } from "@/types/db";
+import type { BrandProfileRow, ReviewWithScores } from "@/types/db";
 
 export type CreateReviewResult =
   | { ok: true; status: 201; review: ReviewResult }
@@ -62,6 +63,18 @@ export interface CreateReviewDeps {
    * block a legitimate review, and it is logged with redacted context.
    */
   getRateUsage?: (companyId: string, sinceIso: string) => Promise<ReviewRateUsage>;
+  /**
+   * Read the company's stored brand profile (DailyPlan Day 27). Wired to
+   * `getBrandProfileByCompany` in the route (request-scoped anon client, so RLS
+   * scopes the read to the caller's company; the session's companyId is also
+   * passed explicitly). The resolved tone guide is injected into the Brand Voice
+   * Guardian's prompt as `brand_context`. When omitted the review runs with no
+   * brand context. A read failure fails OPEN — brand context is an enhancement,
+   * not an authz boundary, so a transient blip degrades to a brand-less review
+   * (the juror infers a baseline) rather than failing the whole request; it is
+   * logged with redacted context.
+   */
+  getBrandProfile?: (companyId: string) => Promise<BrandProfileRow | null>;
   /** Model client; defaults to the env-selected client (offline mock, no key). */
   client?: ModelClient;
 }
@@ -100,10 +113,32 @@ export async function createReview(
   if (!sizeDecision.ok) {
     return { ok: false, status: 400, error: sizeDecision.message };
   }
+
+  // 2c. Load the company's stored brand guide (DailyPlan Day 27) and resolve it
+  //     to `brand_context` for the Brand Voice Guardian. The company comes from
+  //     the server session, never the client (Rules.md §5). Fail open: a read
+  //     blip degrades to a brand-less review (the juror infers a baseline)
+  //     rather than failing the request, logged with redacted context.
+  let brandContext: string | null = null;
+  if (deps.getBrandProfile) {
+    try {
+      const profile = await deps.getBrandProfile(deps.session.companyId);
+      brandContext = resolveBrandContext(profile);
+    } catch (err) {
+      console.error("brand profile read failed (failing open)", {
+        op: "createReview",
+        companyId: deps.session.companyId,
+        message: err instanceof Error ? err.message : "unknown error",
+      });
+    }
+  }
+  const brandContextTokens = brandContext ? estimateTokens(brandContext) : 0;
+
   const budgetDecision = checkTokenBudget({
     contentTokens: estimateTokens(parsed.data.content_text),
     jurorCount: PERSONA_NAMES.length,
-    brandContextTokens: 0, // brand context is loaded server-side on Day 27.
+    // Brand context is injected into a single juror, so it is counted once.
+    brandContextTokens,
   });
   if (!budgetDecision.ok) {
     return { ok: false, status: 400, error: budgetDecision.message };
@@ -138,17 +173,18 @@ export async function createReview(
     }
   }
 
-  // 4. Run the five jurors. brand_context stays null here; loading the
-  //    company's stored brand guide into Juror 1 is Day 27. The aggregate
-  //    honors the company's configured juror weights (Day 16), resolved from
-  //    the server session's company row (never the client — Rules.md §5);
-  //    an unset/partial/invalid config safely falls back to equal weights.
+  // 4. Run the five jurors. The company's stored brand guide (loaded above) is
+  //    threaded in as brand_context and scoped to the Brand Voice Guardian by
+  //    the orchestrator (Day 27). The aggregate honors the company's configured
+  //    juror weights (Day 16), resolved from the server session's company row
+  //    (never the client — Rules.md §5); an unset/partial/invalid config safely
+  //    falls back to equal weights.
   const review = await runReview(
     {
       content_text: parsed.data.content_text,
       content_type: parsed.data.content_type,
       platform: parsed.data.platform,
-      brand_context: null,
+      brand_context: brandContext,
     },
     {
       client: deps.client,
@@ -196,7 +232,11 @@ export async function createReview(
   //    logged, never the user's content, the model prompts/outputs, or a secret
   //    (Rules.md §3/§6).
   logReviewUsage(
-    estimateReviewUsage(parsed.data.content_text, PERSONA_NAMES.length),
+    estimateReviewUsage(
+      parsed.data.content_text,
+      PERSONA_NAMES.length,
+      brandContextTokens,
+    ),
     {
       op: "createReview",
       companyId: deps.session.companyId,

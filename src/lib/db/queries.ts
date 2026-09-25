@@ -257,14 +257,18 @@ export async function getBrandProfileByCompany(
 export interface UpsertBrandProfileParams {
   company_id: string;
   tone_guide_text?: string | null;
+  /** Brand-voice cache key (Day 29): version tag + hash of the normalized guide. */
   embedding_ref?: string | null;
+  /** Cached, bounded brand-voice summary computed on save (Day 29). */
+  brand_summary?: string | null;
 }
 
 /**
  * Insert the first brand profile for a company (DailyPlan Day 26). A company has
  * at most one guide; when one already exists, callers update it in place via
  * `updateBrandProfile` instead. `company_id` must come from the session, never
- * the client (Rules.md §5).
+ * the client (Rules.md §5). The brand-voice cache (`embedding_ref` +
+ * `brand_summary`, Day 29) is computed by the save core and stored here.
  */
 export async function insertBrandProfile(
   db: SupabaseClient,
@@ -276,6 +280,7 @@ export async function insertBrandProfile(
       company_id: params.company_id,
       tone_guide_text: params.tone_guide_text ?? null,
       embedding_ref: params.embedding_ref ?? null,
+      brand_summary: params.brand_summary ?? null,
     })
     .select("*")
     .single();
@@ -285,6 +290,10 @@ export async function insertBrandProfile(
 
 export interface UpdateBrandProfileParams {
   tone_guide_text: string | null;
+  /** Brand-voice cache key (Day 29). Passed together with `brand_summary`. */
+  embedding_ref?: string | null;
+  /** Recomputed brand-voice summary (Day 29). */
+  brand_summary?: string | null;
 }
 
 /**
@@ -292,8 +301,10 @@ export interface UpdateBrandProfileParams {
  * Scoped by BOTH `id` and `company_id` so a service-role write can never touch
  * another company's row even if handed a foreign id (Rules.md §5) — the same
  * defense-in-depth as `updateUserRole`. `updated_at` is bumped explicitly since
- * an UPDATE does not re-run the column default. `embedding_ref` is intentionally
- * left untouched; the brand-voice cache is Days 29–30.
+ * an UPDATE does not re-run the column default. The brand-voice cache
+ * (`embedding_ref` + `brand_summary`, Day 29) is recomputed by the save core and
+ * written alongside the guide so the cache never drifts from the stored text;
+ * both are only included when the caller supplies them.
  */
 export async function updateBrandProfile(
   db: SupabaseClient,
@@ -301,12 +312,16 @@ export async function updateBrandProfile(
   companyId: string,
   params: UpdateBrandProfileParams,
 ): Promise<BrandProfileRow> {
+  const patch: Record<string, unknown> = {
+    tone_guide_text: params.tone_guide_text,
+    updated_at: new Date().toISOString(),
+  };
+  if (params.embedding_ref !== undefined) patch.embedding_ref = params.embedding_ref;
+  if (params.brand_summary !== undefined) patch.brand_summary = params.brand_summary;
+
   const { data, error } = await db
     .from("brand_profiles")
-    .update({
-      tone_guide_text: params.tone_guide_text,
-      updated_at: new Date().toISOString(),
-    })
+    .update(patch)
     .eq("id", id)
     .eq("company_id", companyId)
     .select("*")

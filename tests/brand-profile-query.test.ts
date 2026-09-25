@@ -87,16 +87,19 @@ function profileRow(): BrandProfileRow {
     company_id: COMPANY_ID,
     tone_guide_text: "Measured, expert, never hype.",
     embedding_ref: null,
+    brand_summary: null,
     updated_at: "2026-09-22T00:00:00.000Z",
   };
 }
 
 describe("updateBrandProfile query scoping", () => {
-  it("updates the guide scoped by both id and company_id, bumping updated_at", async () => {
+  it("updates the guide scoped by both id and company_id, bumping updated_at and the cache", async () => {
     const { db, calls } = fakeDb(() => ({ data: profileRow(), error: null }));
 
     const row = await updateBrandProfile(db, PROFILE_ID, COMPANY_ID, {
       tone_guide_text: "New guide.",
+      embedding_ref: "v1:deadbeef",
+      brand_summary: "New guide.",
     });
 
     expect(row.company_id).toBe(COMPANY_ID);
@@ -107,8 +110,25 @@ describe("updateBrandProfile query scoping", () => {
     const values = call?.values as Record<string, unknown>;
     expect(values.tone_guide_text).toBe("New guide.");
     expect(typeof values.updated_at).toBe("string");
-    // embedding_ref is left untouched (brand-voice cache is Days 29–30).
+    // The brand-voice cache (Day 29) is written alongside the guide.
+    expect(values.embedding_ref).toBe("v1:deadbeef");
+    expect(values.brand_summary).toBe("New guide.");
+  });
+
+  it("omits the cache columns from the patch when they are not supplied", async () => {
+    const { db, calls } = fakeDb(() => ({ data: profileRow(), error: null }));
+
+    await updateBrandProfile(db, PROFILE_ID, COMPANY_ID, {
+      tone_guide_text: "Only the guide.",
+    });
+
+    const values = calls.find((c) => c.op === "update")?.values as Record<
+      string,
+      unknown
+    >;
+    expect(values.tone_guide_text).toBe("Only the guide.");
     expect(values).not.toHaveProperty("embedding_ref");
+    expect(values).not.toHaveProperty("brand_summary");
   });
 
   it("throws with operation context (no PII) on a DB error", async () => {
@@ -130,6 +150,8 @@ describe("insertBrandProfile query", () => {
     await insertBrandProfile(db, {
       company_id: COMPANY_ID,
       tone_guide_text: "First guide.",
+      embedding_ref: "v1:cafebabe",
+      brand_summary: "First guide.",
     });
 
     const call = calls.find((c) => c.op === "insert");
@@ -137,6 +159,24 @@ describe("insertBrandProfile query", () => {
     const values = call?.values as Record<string, unknown>;
     expect(values.company_id).toBe(COMPANY_ID);
     expect(values.tone_guide_text).toBe("First guide.");
+    // The brand-voice cache (Day 29) is stored on the first save too.
+    expect(values.embedding_ref).toBe("v1:cafebabe");
+    expect(values.brand_summary).toBe("First guide.");
+  });
+
+  it("defaults the cache columns to null when not supplied", async () => {
+    const { db, calls } = fakeDb(() => ({ data: profileRow(), error: null }));
+
+    await insertBrandProfile(db, {
+      company_id: COMPANY_ID,
+      tone_guide_text: "First guide.",
+    });
+
+    const values = calls.find((c) => c.op === "insert")?.values as Record<
+      string,
+      unknown
+    >;
     expect(values.embedding_ref).toBeNull();
+    expect(values.brand_summary).toBeNull();
   });
 });

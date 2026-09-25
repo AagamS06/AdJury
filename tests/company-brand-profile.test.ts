@@ -14,6 +14,7 @@ import {
   saveBrandProfile,
   type SaveBrandProfileDeps,
 } from "@/lib/company/save-brand-profile";
+import { computeBrandVoiceCache } from "@/lib/company/brand-cache";
 import type { BrandProfileRow, CompanyRow, UserRole } from "@/types/db";
 
 /**
@@ -57,6 +58,7 @@ function profileRow(overrides: Partial<BrandProfileRow> = {}): BrandProfileRow {
     company_id: COMPANY_ID,
     tone_guide_text: "Measured, expert, never hype.",
     embedding_ref: null,
+    brand_summary: null,
     updated_at: "2026-09-22T00:00:00.000Z",
     ...overrides,
   };
@@ -199,7 +201,7 @@ describe("saveBrandProfile core", () => {
     expect(deps.update).not.toHaveBeenCalled();
   });
 
-  it("inserts the first guide (created:true) scoped to the session company", async () => {
+  it("inserts the first guide (created:true) scoped to the session company, with a computed cache", async () => {
     const insert = vi.fn(async ({ companyId, toneGuideText: t }) =>
       profileRow({ company_id: companyId, tone_guide_text: t }),
     );
@@ -213,35 +215,75 @@ describe("saveBrandProfile core", () => {
     });
 
     expect(result).toMatchObject({ ok: true, status: 200, created: true });
-    // Company id comes from the session; the text is trimmed by the schema.
+    // Company id comes from the session; the text is trimmed by the schema; the
+    // brand-voice cache (key + summary) is computed on save (Day 29).
+    const cache = computeBrandVoiceCache(GOOD_GUIDE);
     expect(insert).toHaveBeenCalledWith({
       companyId: COMPANY_ID,
       toneGuideText: GOOD_GUIDE,
+      embeddingRef: cache.embeddingRef,
+      summary: cache.summary,
     });
     expect(update).not.toHaveBeenCalled();
   });
 
-  it("updates an existing guide in place (created:false), id + company scoped", async () => {
+  it("updates an existing guide in place (created:false), id + company scoped, recomputing the cache", async () => {
     const existing = profileRow();
     const update = vi.fn(async ({ id, companyId, toneGuideText: t }) =>
       profileRow({ id, company_id: companyId, tone_guide_text: t }),
     );
     const insert = vi.fn();
+    const revised = "A revised, longer brand guide.";
     const result = await saveBrandProfile({
       session: session("admin"),
-      input: { tone_guide_text: "A revised, longer brand guide." },
+      input: { tone_guide_text: revised },
       getExisting: vi.fn(async () => existing),
       insert,
       update,
     });
 
     expect(result).toMatchObject({ ok: true, status: 200, created: false });
+    // A changed guide recomputes the cache and writes it alongside the text.
+    const cache = computeBrandVoiceCache(revised);
     expect(update).toHaveBeenCalledWith({
       id: PROFILE_ID,
       companyId: COMPANY_ID,
-      toneGuideText: "A revised, longer brand guide.",
+      toneGuideText: revised,
+      embeddingRef: cache.embeddingRef,
+      summary: cache.summary,
     });
     expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("reuses the stored cache without recomputing when the guide is unchanged (Day 29)", async () => {
+    // The stored row's cache is already current for this guide.
+    const cache = computeBrandVoiceCache(GOOD_GUIDE);
+    const existing = profileRow({
+      tone_guide_text: GOOD_GUIDE,
+      embedding_ref: cache.embeddingRef,
+      brand_summary: cache.summary,
+    });
+    const update = vi.fn(async ({ id, companyId, toneGuideText: t }) =>
+      profileRow({ id, company_id: companyId, tone_guide_text: t }),
+    );
+    const result = await saveBrandProfile({
+      session: session("admin"),
+      // Same guide, only cosmetic whitespace differs — normalizes to the same key.
+      input: { tone_guide_text: `  ${GOOD_GUIDE}  ` },
+      getExisting: vi.fn(async () => existing),
+      insert: vi.fn(),
+      update,
+    });
+
+    expect(result).toMatchObject({ ok: true, status: 200, created: false });
+    // The stored artifacts are reused verbatim (no recompute needed).
+    expect(update).toHaveBeenCalledWith({
+      id: PROFILE_ID,
+      companyId: COMPANY_ID,
+      toneGuideText: GOOD_GUIDE,
+      embeddingRef: cache.embeddingRef,
+      summary: cache.summary,
+    });
   });
 
   it("500 (redacted) when the existing-profile read fails", async () => {

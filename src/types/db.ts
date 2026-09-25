@@ -54,7 +54,10 @@ export interface BrandProfileRow {
   id: string;
   company_id: string;
   tone_guide_text: string | null;
+  /** Cache key for `brand_summary`: version tag + hash of the normalized guide (Day 29). */
   embedding_ref: string | null;
+  /** Cached, bounded brand-voice summary computed on save (Day 29); reused by reviews. */
+  brand_summary: string | null;
   updated_at: string;
 }
 

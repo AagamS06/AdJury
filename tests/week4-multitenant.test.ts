@@ -187,12 +187,15 @@ class Store {
   insertBrandProfile = async (params: {
     companyId: string;
     toneGuideText: string;
+    embeddingRef: string;
+    summary: string;
   }): Promise<BrandProfileRow> => {
     const row: BrandProfileRow = {
       id: this.nextId("bp"),
       company_id: params.companyId,
       tone_guide_text: params.toneGuideText,
-      embedding_ref: null,
+      embedding_ref: params.embeddingRef,
+      brand_summary: params.summary,
       updated_at: "2026-09-22T00:00:00.000Z",
     };
     this.brandProfiles.set(row.id, row);
@@ -203,6 +206,8 @@ class Store {
     id: string;
     companyId: string;
     toneGuideText: string;
+    embeddingRef: string;
+    summary: string;
   }): Promise<BrandProfileRow> => {
     const row = this.brandProfiles.get(params.id);
     if (!row || row.company_id !== params.companyId) {
@@ -211,6 +216,8 @@ class Store {
     const updated: BrandProfileRow = {
       ...row,
       tone_guide_text: params.toneGuideText,
+      embedding_ref: params.embeddingRef,
+      brand_summary: params.summary,
       updated_at: "2026-09-23T00:00:00.000Z",
     };
     this.brandProfiles.set(params.id, updated);

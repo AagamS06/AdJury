@@ -125,13 +125,19 @@ export async function saveBrandProfileAction(
     session,
     input: { tone_guide_text: field(formData, "tone_guide_text") },
     getExisting: (companyId) => getBrandProfileByCompany(db, companyId),
-    insert: ({ companyId, toneGuideText }) =>
+    insert: ({ companyId, toneGuideText, embeddingRef, brandSummary }) =>
       insertBrandProfile(db, {
         company_id: companyId,
         tone_guide_text: toneGuideText,
+        embedding_ref: embeddingRef,
+        brand_summary: brandSummary,
       }),
-    update: ({ id, companyId, toneGuideText }) =>
-      updateBrandProfile(db, id, companyId, { tone_guide_text: toneGuideText }),
+    update: ({ id, companyId, toneGuideText, embeddingRef, brandSummary }) =>
+      updateBrandProfile(db, id, companyId, {
+        tone_guide_text: toneGuideText,
+        embedding_ref: embeddingRef,
+        brand_summary: brandSummary,
+      }),
   });
 
   if (!result.ok) return { error: result.error };

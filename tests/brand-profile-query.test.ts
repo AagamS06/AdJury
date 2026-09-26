@@ -87,6 +87,7 @@ function profileRow(): BrandProfileRow {
     company_id: COMPANY_ID,
     tone_guide_text: "Measured, expert, never hype.",
     embedding_ref: null,
+    brand_summary: null,
     updated_at: "2026-09-22T00:00:00.000Z",
   };
 }
@@ -97,6 +98,8 @@ describe("updateBrandProfile query scoping", () => {
 
     const row = await updateBrandProfile(db, PROFILE_ID, COMPANY_ID, {
       tone_guide_text: "New guide.",
+      embedding_ref: "bvc1-abc",
+      brand_summary: "New guide summary.",
     });
 
     expect(row.company_id).toBe(COMPANY_ID);
@@ -107,8 +110,9 @@ describe("updateBrandProfile query scoping", () => {
     const values = call?.values as Record<string, unknown>;
     expect(values.tone_guide_text).toBe("New guide.");
     expect(typeof values.updated_at).toBe("string");
-    // embedding_ref is left untouched (brand-voice cache is Days 29–30).
-    expect(values).not.toHaveProperty("embedding_ref");
+    // The brand-voice cache is recomputed and written alongside the text (Day 29).
+    expect(values.embedding_ref).toBe("bvc1-abc");
+    expect(values.brand_summary).toBe("New guide summary.");
   });
 
   it("throws with operation context (no PII) on a DB error", async () => {
@@ -130,6 +134,8 @@ describe("insertBrandProfile query", () => {
     await insertBrandProfile(db, {
       company_id: COMPANY_ID,
       tone_guide_text: "First guide.",
+      embedding_ref: "bvc1-def",
+      brand_summary: "First guide summary.",
     });
 
     const call = calls.find((c) => c.op === "insert");
@@ -137,6 +143,24 @@ describe("insertBrandProfile query", () => {
     const values = call?.values as Record<string, unknown>;
     expect(values.company_id).toBe(COMPANY_ID);
     expect(values.tone_guide_text).toBe("First guide.");
+    // The brand-voice cache is written with the first guide (Day 29).
+    expect(values.embedding_ref).toBe("bvc1-def");
+    expect(values.brand_summary).toBe("First guide summary.");
+  });
+
+  it("defaults the cache columns to null when omitted", async () => {
+    const { db, calls } = fakeDb(() => ({ data: profileRow(), error: null }));
+
+    await insertBrandProfile(db, {
+      company_id: COMPANY_ID,
+      tone_guide_text: "First guide.",
+    });
+
+    const values = calls.find((c) => c.op === "insert")?.values as Record<
+      string,
+      unknown
+    >;
     expect(values.embedding_ref).toBeNull();
+    expect(values.brand_summary).toBeNull();
   });
 });

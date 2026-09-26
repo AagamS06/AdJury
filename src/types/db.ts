@@ -54,7 +54,10 @@ export interface BrandProfileRow {
   id: string;
   company_id: string;
   tone_guide_text: string | null;
+  /** Content-addressed cache key for the derived summary (Day 29); null = no cache. */
   embedding_ref: string | null;
+  /** Cached bounded brand-voice summary (Day 29); null = no cache yet. */
+  brand_summary: string | null;
   updated_at: string;
 }
 

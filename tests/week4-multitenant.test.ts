@@ -187,12 +187,15 @@ class Store {
   insertBrandProfile = async (params: {
     companyId: string;
     toneGuideText: string;
+    embeddingRef?: string | null;
+    brandSummary?: string | null;
   }): Promise<BrandProfileRow> => {
     const row: BrandProfileRow = {
       id: this.nextId("bp"),
       company_id: params.companyId,
       tone_guide_text: params.toneGuideText,
-      embedding_ref: null,
+      embedding_ref: params.embeddingRef ?? null,
+      brand_summary: params.brandSummary ?? null,
       updated_at: "2026-09-22T00:00:00.000Z",
     };
     this.brandProfiles.set(row.id, row);
@@ -203,6 +206,8 @@ class Store {
     id: string;
     companyId: string;
     toneGuideText: string;
+    embeddingRef?: string | null;
+    brandSummary?: string | null;
   }): Promise<BrandProfileRow> => {
     const row = this.brandProfiles.get(params.id);
     if (!row || row.company_id !== params.companyId) {
@@ -211,6 +216,8 @@ class Store {
     const updated: BrandProfileRow = {
       ...row,
       tone_guide_text: params.toneGuideText,
+      embedding_ref: params.embeddingRef ?? null,
+      brand_summary: params.brandSummary ?? null,
       updated_at: "2026-09-23T00:00:00.000Z",
     };
     this.brandProfiles.set(params.id, updated);
@@ -422,6 +429,10 @@ describe("Week 4 multi-tenant lifecycle (integration)", () => {
     if (!saveA.ok) return;
     expect(saveA.created).toBe(true);
     expect(saveA.profile.company_id).toBe(COMPANY_A);
+    // Day 29: the brand-voice cache is populated on the save (summary + ref) so a
+    // review can reuse it without reprocessing the full guide.
+    expect(saveA.profile.brand_summary).toContain("Company A");
+    expect(saveA.profile.embedding_ref).toMatch(/^bvc\d+-[0-9a-f]{64}$/);
 
     const saveB = await saveBrandProfile({
       session: session(store, ADMIN_B),
@@ -449,6 +460,9 @@ describe("Week 4 multi-tenant lifecycle (integration)", () => {
     expect(editA.created).toBe(false);
     expect(editA.profile.company_id).toBe(COMPANY_A);
     expect(store.brandProfiles.size).toBe(2);
+    // The edit recomputes the cache from the new guide (never drifts from it).
+    expect(editA.profile.brand_summary).toContain("Company A v2");
+    expect(editA.profile.embedding_ref).not.toBe(saveA.profile.embedding_ref);
     expect((await store.getBrandProfileByCompany(COMPANY_B))?.tone_guide_text).toContain("Company B");
   });
 

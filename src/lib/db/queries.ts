@@ -257,14 +257,18 @@ export async function getBrandProfileByCompany(
 export interface UpsertBrandProfileParams {
   company_id: string;
   tone_guide_text?: string | null;
+  /** Content-addressed cache key for the derived summary (Day 29). */
   embedding_ref?: string | null;
+  /** Cached bounded brand-voice summary (Day 29). */
+  brand_summary?: string | null;
 }
 
 /**
  * Insert the first brand profile for a company (DailyPlan Day 26). A company has
  * at most one guide; when one already exists, callers update it in place via
  * `updateBrandProfile` instead. `company_id` must come from the session, never
- * the client (Rules.md §5).
+ * the client (Rules.md §5). The brand-voice cache (`embedding_ref` +
+ * `brand_summary`) is computed once at save time and written here (Day 29).
  */
 export async function insertBrandProfile(
   db: SupabaseClient,
@@ -276,6 +280,7 @@ export async function insertBrandProfile(
       company_id: params.company_id,
       tone_guide_text: params.tone_guide_text ?? null,
       embedding_ref: params.embedding_ref ?? null,
+      brand_summary: params.brand_summary ?? null,
     })
     .select("*")
     .single();
@@ -285,6 +290,10 @@ export async function insertBrandProfile(
 
 export interface UpdateBrandProfileParams {
   tone_guide_text: string | null;
+  /** Content-addressed cache key recomputed from the new guide (Day 29). */
+  embedding_ref?: string | null;
+  /** Cached summary recomputed from the new guide (Day 29). */
+  brand_summary?: string | null;
 }
 
 /**
@@ -292,8 +301,9 @@ export interface UpdateBrandProfileParams {
  * Scoped by BOTH `id` and `company_id` so a service-role write can never touch
  * another company's row even if handed a foreign id (Rules.md §5) — the same
  * defense-in-depth as `updateUserRole`. `updated_at` is bumped explicitly since
- * an UPDATE does not re-run the column default. `embedding_ref` is intentionally
- * left untouched; the brand-voice cache is Days 29–30.
+ * an UPDATE does not re-run the column default. The brand-voice cache
+ * (`embedding_ref` + `brand_summary`) is recomputed from the new guide at save
+ * time and written alongside the text (Day 29), so it never drifts from it.
  */
 export async function updateBrandProfile(
   db: SupabaseClient,
@@ -305,6 +315,8 @@ export async function updateBrandProfile(
     .from("brand_profiles")
     .update({
       tone_guide_text: params.tone_guide_text,
+      embedding_ref: params.embedding_ref ?? null,
+      brand_summary: params.brand_summary ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)

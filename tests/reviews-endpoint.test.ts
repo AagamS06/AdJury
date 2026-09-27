@@ -3,6 +3,7 @@ import type { ModelClient } from "@/lib/ai/client";
 import type { SessionContext } from "@/lib/auth/session";
 import type { InsertReviewParams } from "@/lib/db/queries";
 import { createReview } from "@/lib/reviews/create-review";
+import { computeBrandCache } from "@/lib/company/brand-summary";
 import { PERSONA_NAMES } from "@/lib/schema/juror";
 import type { BrandProfileRow, ReviewWithScores } from "@/types/db";
 
@@ -368,5 +369,145 @@ describe("createReview — brand context (Day 27)", () => {
     ) ?? [];
     expect(JSON.stringify(meta)).not.toContain(VALID_BODY.content_text);
     errSpy.mockRestore();
+  });
+});
+
+/**
+ * Brand-voice cache — read side (DailyPlan Day 30). A review now injects the
+ * cached, bounded brand summary (Day 29) into the Brand Voice Guardian instead of
+ * reprocessing the full guide, so cost per review is independent of guide size.
+ * These tests prove the review path reuses a fresh cache verbatim, recomputes a
+ * bounded summary when the cache is missing/stale (never the full guide), and
+ * records where the context came from in the redacted usage log.
+ */
+describe("createReview — brand-voice cache reuse (Day 30)", () => {
+  const BRAND_LINE = "Brand context / style guide:";
+  // A distinctive marker at the END of a long guide, well past the summary cap,
+  // so it can only appear in a prompt if the FULL guide was reprocessed.
+  const TAIL_MARKER = "ZZZ_TAIL_MARKER_ZZZ";
+  const BIG_GUIDE =
+    "Tone: measured, expert, and reassuring; never hype. ".repeat(40) +
+    TAIL_MARKER;
+
+  function brandRow(overrides: Partial<BrandProfileRow> = {}): BrandProfileRow {
+    return {
+      id: "33333333-3333-3333-3333-333333333333",
+      company_id: SESSION.companyId,
+      tone_guide_text: BIG_GUIDE,
+      embedding_ref: null,
+      brand_summary: null,
+      updated_at: "2026-09-22T00:00:00.000Z",
+      ...overrides,
+    };
+  }
+
+  function recordingClient() {
+    const calls: { persona: string; user: string }[] = [];
+    const client: ModelClient = {
+      model: "test-model",
+      isMock: true,
+      complete: async ({ persona, user }) => {
+        calls.push({ persona, user });
+        return JSON.stringify({
+          persona,
+          score: 8,
+          confidence: "high",
+          summary: "Reads cleanly on this lens.",
+          issues: [],
+          suggested_rewrite: "A sharper version of the same content.",
+        });
+      },
+    };
+    const promptFor = (persona: string) =>
+      calls.find((c) => c.persona === persona)?.user ?? "";
+    return { client, promptFor };
+  }
+
+  beforeEach(() => {
+    vi.spyOn(console, "info").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("injects the cached summary (not the full guide) when the cache is fresh", async () => {
+    const { persist } = recordingPersist();
+    const { client, promptFor } = recordingClient();
+    const cache = computeBrandCache(BIG_GUIDE);
+
+    const result = await createReview(VALID_BODY, {
+      session: SESSION,
+      persist,
+      client,
+      getBrandProfile: async () =>
+        brandRow({ embedding_ref: cache.embeddingRef, brand_summary: cache.summary }),
+    });
+
+    expect(result.ok).toBe(true);
+    const juror1 = promptFor("brand_voice_guardian");
+    expect(juror1).toContain(BRAND_LINE);
+    // The bounded cached summary is used…
+    expect(juror1).toContain(cache.summary!);
+    // …and the full guide's tail was NOT reprocessed into the prompt.
+    expect(juror1).not.toContain(TAIL_MARKER);
+  });
+
+  it("recomputes a bounded summary when the cache is missing (never injects the full guide)", async () => {
+    const { persist } = recordingPersist();
+    const { client, promptFor } = recordingClient();
+
+    const result = await createReview(VALID_BODY, {
+      session: SESSION,
+      persist,
+      client,
+      // No embedding_ref / brand_summary yet (e.g. a guide saved before the cache).
+      getBrandProfile: async () => brandRow(),
+    });
+
+    expect(result.ok).toBe(true);
+    const juror1 = promptFor("brand_voice_guardian");
+    expect(juror1).toContain(BRAND_LINE);
+    // Bounded fallback: the leading content is present, the tail is not.
+    expect(juror1).toContain("Tone: measured, expert, and reassuring");
+    expect(juror1).not.toContain(TAIL_MARKER);
+  });
+
+  it("records the brand-context source in the redacted usage log", async () => {
+    const { persist } = recordingPersist();
+    const { client } = recordingClient();
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+    const cache = computeBrandCache(BIG_GUIDE);
+
+    await createReview(VALID_BODY, {
+      session: SESSION,
+      persist,
+      client,
+      getBrandProfile: async () =>
+        brandRow({ embedding_ref: cache.embeddingRef, brand_summary: cache.summary }),
+    });
+
+    const [, record] =
+      infoSpy.mock.calls.find(([msg]) => msg === "review usage") ?? [];
+    expect(record).toMatchObject({ brandSource: "cache" });
+    // The log is still content-free (Rules.md §3/§6): no guide/content leaks.
+    expect(JSON.stringify(record)).not.toContain(TAIL_MARKER);
+    expect(JSON.stringify(record)).not.toContain(VALID_BODY.content_text);
+  });
+
+  it("logs brandSource none when the company has no stored guide", async () => {
+    const { persist } = recordingPersist();
+    const { client } = recordingClient();
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    await createReview(VALID_BODY, {
+      session: SESSION,
+      persist,
+      client,
+      getBrandProfile: async () => null,
+    });
+
+    const [, record] =
+      infoSpy.mock.calls.find(([msg]) => msg === "review usage") ?? [];
+    expect(record).toMatchObject({ brandSource: "none" });
   });
 });

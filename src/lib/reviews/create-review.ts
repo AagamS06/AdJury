@@ -23,7 +23,10 @@ import {
 } from "@/lib/ai/cost";
 import { runReview } from "@/lib/ai/orchestrator";
 import type { SessionContext } from "@/lib/auth/session";
-import { resolveBrandContext } from "@/lib/company/brand-profile";
+import {
+  resolveBrandSummary,
+  type BrandSummarySource,
+} from "@/lib/company/brand-summary";
 import type { InsertReviewParams, ReviewRateUsage } from "@/lib/db/queries";
 import {
   evaluateRateLimit,
@@ -114,16 +117,22 @@ export async function createReview(
     return { ok: false, status: 400, error: sizeDecision.message };
   }
 
-  // 2c. Load the company's stored brand guide (DailyPlan Day 27) and resolve it
-  //     to `brand_context` for the Brand Voice Guardian. The company comes from
-  //     the server session, never the client (Rules.md §5). Fail open: a read
-  //     blip degrades to a brand-less review (the juror infers a baseline)
-  //     rather than failing the request, logged with redacted context.
+  // 2c. Load the company's stored brand guide (DailyPlan Day 27) and resolve the
+  //     `brand_context` for the Brand Voice Guardian from the **cached** brand
+  //     summary written once per save (DailyPlan Day 29/30) rather than
+  //     reprocessing the full guide on every review — so a large guide costs no
+  //     more per review than a small one (Rules.md §1; Architecture.md §5). The
+  //     company comes from the server session, never the client (Rules.md §5).
+  //     Fail open: a read blip degrades to a brand-less review (the juror infers
+  //     a baseline) rather than failing the request, logged with redacted context.
   let brandContext: string | null = null;
+  let brandSource: BrandSummarySource = "none";
   if (deps.getBrandProfile) {
     try {
       const profile = await deps.getBrandProfile(deps.session.companyId);
-      brandContext = resolveBrandContext(profile);
+      const resolved = resolveBrandSummary(profile);
+      brandContext = resolved.summary;
+      brandSource = resolved.source;
     } catch (err) {
       console.error("brand profile read failed (failing open)", {
         op: "createReview",
@@ -250,6 +259,9 @@ export async function createReview(
       aggregateScore: review.aggregate_score,
       jurorsOk: review.jurors.filter((j) => j.status === "ok").length,
       jurorsError: review.jurors.filter((j) => j.status === "error").length,
+      // Whether the brand context was reused from cache, recomputed, or absent
+      // (DailyPlan Day 30) — content-free observability that "verified reuse" holds.
+      brandSource,
     },
   );
 

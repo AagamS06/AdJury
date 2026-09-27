@@ -198,6 +198,13 @@ export interface ReviewUsageLogMeta {
   aggregateScore: number | null;
   jurorsOk: number;
   jurorsError: number;
+  /**
+   * How the brand context was sourced (DailyPlan Day 30): `cache` (reused the
+   * stored brand summary), `recomputed` (cache missing/stale, derived live once),
+   * or `none` (no guide). Content-free — a small enum, never guide text — so it
+   * keeps the redaction contract. Optional so pre-Day-30 callers still typecheck.
+   */
+  brandSource?: "cache" | "recomputed" | "none";
 }
 
 /** A flat, content-free record ready to log. */

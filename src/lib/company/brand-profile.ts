@@ -10,8 +10,9 @@
  * `components/company/brand-profile-form.tsx`.
  *
  * Wiring the stored guide into the review's `brand_context` is Day 27; the
- * brand-voice embedding cache is Days 29–30. This day is the create/edit surface
- * and its storage only.
+ * brand-voice cache write (derive + store a bounded summary on save) is Day 29
+ * (`brand-summary.ts`), and reviews reusing that cached summary is Day 30. This
+ * module is the create/edit surface's pure display/contract pieces only.
  */
 import { z } from "zod";
 import { formatHistoryDate } from "@/lib/reviews/history-view";
@@ -72,8 +73,8 @@ export function toneGuideText(
  * whitespace-only row reads as "not set" (mirrors `hasBrandProfile`) and the
  * Brand Voice Guardian falls back to inferring a professional baseline rather
  * than being handed an empty guide. The full stored guide is passed verbatim
- * here; the brand-voice summary/embedding cache that avoids reprocessing it
- * every review is Days 29–30.
+ * here; switching reviews to the cached brand summary (written on save in Day 29)
+ * so they avoid reprocessing the full guide every review is Day 30.
  */
 export function resolveBrandContext(
   profile: Pick<BrandProfileRow, "tone_guide_text"> | null,

@@ -15,12 +15,16 @@
  *
  * Create-or-edit: a company has one brand guide. If one already exists we update
  * it in place (scoped by its id AND company_id); otherwise we insert the first
- * one. The existing `embedding_ref` is left untouched — the brand-voice cache
- * (write/read) is Days 29–30.
+ * one. Either way the brand-voice cache (`embedding_ref` + `brand_summary`) is
+ * computed once here from the validated guide text and written with it (Day 29),
+ * so the stored cache never drifts from the guide and is not recomputed per
+ * review (Day 30 reads the cached summary). Computing the cache in this core (not
+ * the action) keeps the "cache populated on brand edit" behavior unit-testable.
  */
 import type { SessionContext } from "@/lib/auth/session";
 import type { BrandProfileRow } from "@/types/db";
 import { BrandProfileSchema, firstBrandProfileIssue } from "./brand-profile";
+import { computeBrandCache } from "./brand-summary";
 
 export type SaveBrandProfileResult =
   | { ok: true; status: 200; profile: BrandProfileRow; created: boolean }
@@ -33,16 +37,20 @@ export interface SaveBrandProfileDeps {
   input: { tone_guide_text: string };
   /** Fetch the company's current brand profile, wired to `getBrandProfileByCompany`. */
   getExisting: (companyId: string) => Promise<BrandProfileRow | null>;
-  /** Insert the first brand profile, wired to `insertBrandProfile`. */
+  /** Insert the first brand profile (+ computed cache), wired to `insertBrandProfile`. */
   insert: (params: {
     companyId: string;
     toneGuideText: string;
+    embeddingRef: string | null;
+    brandSummary: string | null;
   }) => Promise<BrandProfileRow>;
-  /** Update an existing brand profile, wired to `updateBrandProfile`; id + company scoped. */
+  /** Update an existing brand profile (+ recomputed cache), wired to `updateBrandProfile`; id + company scoped. */
   update: (params: {
     id: string;
     companyId: string;
     toneGuideText: string;
+    embeddingRef: string | null;
+    brandSummary: string | null;
   }) => Promise<BrandProfileRow>;
 }
 
@@ -69,6 +77,12 @@ export async function saveBrandProfile(
   const toneGuideText = parsed.data.tone_guide_text;
   const companyId = deps.session.companyId;
 
+  // Brand-voice cache (Day 29): derive the bounded summary + content-addressed
+  // key once, here, from the validated guide. A valid guide is never empty
+  // (schema min length), so both are non-null; they are written with the text so
+  // a review (Day 30) can reuse the summary without reprocessing the full guide.
+  const cache = computeBrandCache(toneGuideText);
+
   let existing: BrandProfileRow | null;
   try {
     existing = await deps.getExisting(companyId);
@@ -82,10 +96,17 @@ export async function saveBrandProfile(
         id: existing.id,
         companyId,
         toneGuideText,
+        embeddingRef: cache.embeddingRef,
+        brandSummary: cache.summary,
       });
       return { ok: true, status: 200, profile, created: false };
     }
-    const profile = await deps.insert({ companyId, toneGuideText });
+    const profile = await deps.insert({
+      companyId,
+      toneGuideText,
+      embeddingRef: cache.embeddingRef,
+      brandSummary: cache.summary,
+    });
     return { ok: true, status: 200, profile, created: true };
   } catch (err) {
     return failure("saveBrandProfile/write", companyId, err);

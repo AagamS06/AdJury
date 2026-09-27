@@ -14,6 +14,7 @@ import {
   saveBrandProfile,
   type SaveBrandProfileDeps,
 } from "@/lib/company/save-brand-profile";
+import { computeBrandCache } from "@/lib/company/brand-summary";
 import type { BrandProfileRow, CompanyRow, UserRole } from "@/types/db";
 
 /**
@@ -57,6 +58,7 @@ function profileRow(overrides: Partial<BrandProfileRow> = {}): BrandProfileRow {
     company_id: COMPANY_ID,
     tone_guide_text: "Measured, expert, never hype.",
     embedding_ref: null,
+    brand_summary: null,
     updated_at: "2026-09-22T00:00:00.000Z",
     ...overrides,
   };
@@ -199,7 +201,7 @@ describe("saveBrandProfile core", () => {
     expect(deps.update).not.toHaveBeenCalled();
   });
 
-  it("inserts the first guide (created:true) scoped to the session company", async () => {
+  it("inserts the first guide (created:true) with the computed cache, scoped to the session company", async () => {
     const insert = vi.fn(async ({ companyId, toneGuideText: t }) =>
       profileRow({ company_id: companyId, tone_guide_text: t }),
     );
@@ -213,33 +215,44 @@ describe("saveBrandProfile core", () => {
     });
 
     expect(result).toMatchObject({ ok: true, status: 200, created: true });
-    // Company id comes from the session; the text is trimmed by the schema.
+    // Company id comes from the session; the text is trimmed by the schema; and
+    // the brand-voice cache is derived from the trimmed guide and passed to the
+    // write (Day 29 — cache populated on brand edit).
+    const cache = computeBrandCache(GOOD_GUIDE);
     expect(insert).toHaveBeenCalledWith({
       companyId: COMPANY_ID,
       toneGuideText: GOOD_GUIDE,
+      embeddingRef: cache.embeddingRef,
+      brandSummary: cache.summary,
     });
+    expect(cache.embeddingRef).toMatch(/^bvc\d+-[0-9a-f]{64}$/);
+    expect(cache.summary).toBe(GOOD_GUIDE);
     expect(update).not.toHaveBeenCalled();
   });
 
-  it("updates an existing guide in place (created:false), id + company scoped", async () => {
+  it("updates an existing guide in place (created:false) with the recomputed cache, id + company scoped", async () => {
     const existing = profileRow();
     const update = vi.fn(async ({ id, companyId, toneGuideText: t }) =>
       profileRow({ id, company_id: companyId, tone_guide_text: t }),
     );
     const insert = vi.fn();
+    const revised = "A revised, longer brand guide.";
     const result = await saveBrandProfile({
       session: session("admin"),
-      input: { tone_guide_text: "A revised, longer brand guide." },
+      input: { tone_guide_text: revised },
       getExisting: vi.fn(async () => existing),
       insert,
       update,
     });
 
     expect(result).toMatchObject({ ok: true, status: 200, created: false });
+    const cache = computeBrandCache(revised);
     expect(update).toHaveBeenCalledWith({
       id: PROFILE_ID,
       companyId: COMPANY_ID,
-      toneGuideText: "A revised, longer brand guide.",
+      toneGuideText: revised,
+      embeddingRef: cache.embeddingRef,
+      brandSummary: cache.summary,
     });
     expect(insert).not.toHaveBeenCalled();
   });

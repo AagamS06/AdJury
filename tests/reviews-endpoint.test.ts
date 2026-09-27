@@ -243,6 +243,7 @@ describe("createReview — brand context (Day 27)", () => {
       company_id: SESSION.companyId,
       tone_guide_text: GUIDE,
       embedding_ref: null,
+      brand_summary: null,
       updated_at: "2026-09-22T00:00:00.000Z",
       ...overrides,
     };

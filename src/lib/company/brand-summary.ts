@@ -20,6 +20,7 @@
  * summary is Day 30 (this day does not change the review read path).
  */
 import { createHash } from "node:crypto";
+import type { BrandProfileRow } from "@/types/db";
 
 /**
  * Bump when the summarization algorithm changes so every stored `embedding_ref`
@@ -148,4 +149,59 @@ export function isBrandCacheFresh(
 ): boolean {
   if (!row?.embedding_ref) return false;
   return row.embedding_ref === brandGuideRef(text);
+}
+
+/** Where a review's brand context came from — for observability + testing (Day 30). */
+export type BrandSummarySource = "cache" | "recomputed" | "none";
+
+/** The brand context to inject into a review, plus where it was sourced from. */
+export interface ResolvedBrandSummary {
+  /** Bounded brand context for the Brand Voice Guardian; null when no usable guide. */
+  summary: string | null;
+  /**
+   * `cache`      — reused the stored `brand_summary` (no reprocessing);
+   * `recomputed` — cache missing/stale, so the same bounded summary was derived
+   *                live from the guide this once (the next save repopulates it);
+   * `none`       — the company has no usable guide.
+   */
+  source: BrandSummarySource;
+}
+
+/**
+ * Resolve the brand context to inject into a review (DailyPlan Day 30 — read side
+ * of the brand-voice cache; Architecture.md §5 "reuse cached embedding rather than
+ * reprocessing the style guide").
+ *
+ * Reviews reuse the **cached** bounded summary written once per brand-guide save
+ * (Day 29) instead of reprocessing the full guide every time. Because the summary
+ * is capped at {@link MAX_BRAND_SUMMARY_CHARS} while the guide may be up to
+ * `MAX_TONE_GUIDE_CHARS`, the brand context's token cost is **independent of the
+ * guide's size** — the whole point of the cache (Rules.md §1 cost discipline).
+ *
+ * - No usable guide (absent / whitespace-only) → `null` (`source: "none"`); the
+ *   Brand Voice Guardian falls back to inferring a professional baseline.
+ * - Fresh cache — a stored `brand_summary` whose `embedding_ref` matches the
+ *   current guide + algorithm version — → reuse it verbatim (`source: "cache"`),
+ *   with no reprocessing regardless of guide size.
+ * - Cache missing or stale (a guide saved before the cache existed, or after a
+ *   {@link BRAND_SUMMARY_VERSION} bump) → recompute the **same** bounded summary
+ *   live this once (`source: "recomputed"`). Still guide-size-independent in cost;
+ *   the next brand save repopulates the cache. Falling back to the *full* guide
+ *   here would reintroduce exactly the per-review, guide-size cost the cache
+ *   exists to remove, so we deliberately do not.
+ */
+export function resolveBrandSummary(
+  row:
+    | Pick<BrandProfileRow, "tone_guide_text" | "embedding_ref" | "brand_summary">
+    | null,
+): ResolvedBrandSummary {
+  const guide = normalizeGuideText(row?.tone_guide_text);
+  if (guide.length === 0) {
+    return { summary: null, source: "none" };
+  }
+  const cached = (row?.brand_summary ?? "").trim();
+  if (cached.length > 0 && isBrandCacheFresh(row, row?.tone_guide_text)) {
+    return { summary: cached, source: "cache" };
+  }
+  return { summary: summarizeBrandGuide(guide), source: "recomputed" };
 }

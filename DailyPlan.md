@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-09-26 (Day 29 — Brand-voice cache write)
+> **Status:** Active · **Last updated:** 2026-09-27 (Day 30 — Brand-voice cache read)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -151,8 +151,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Compute a brand summary/embedding once per `brand_profiles` update; store `embedding_ref`. **Completed 2026-09-26.**
 - DoD: cache populated on brand edit; not recomputed per review.
 
-### Day 30 — Brand-voice cache (read)
-- [ ] Reviews use the cached summary instead of reprocessing the full guide.
+### Day 30 — Brand-voice cache (read) ✅
+- [x] Reviews use the cached summary instead of reprocessing the full guide. **Completed 2026-09-27.**
 - DoD: verified reuse; cost per review unchanged by guide size.
 
 ### Day 31 — Analytics data layer

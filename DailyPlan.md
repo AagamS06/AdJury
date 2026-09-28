@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-09-27 (Day 30 — Brand-voice cache read)
+> **Status:** Active · **Last updated:** 2026-09-28 (Day 31 — Analytics data layer)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -155,8 +155,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Reviews use the cached summary instead of reprocessing the full guide. **Completed 2026-09-27.**
 - DoD: verified reuse; cost per review unchanged by guide size.
 
-### Day 31 — Analytics data layer
-- [ ] Query helpers: score/verdict trends over time per company + per juror.
+### Day 31 — Analytics data layer ✅
+- [x] Query helpers: score/verdict trends over time per company + per juror. **Completed 2026-09-28.**
 - DoD: aggregates compute correctly; tests added.
 
 ### Day 32 — Analytics dashboard UI

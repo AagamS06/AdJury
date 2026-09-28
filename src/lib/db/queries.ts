@@ -588,3 +588,51 @@ export async function listReviewsByCompany(
   if (error) fail("listReviewsByCompany", error);
   return (data as ReviewRow[] | null) ?? [];
 }
+
+export interface AnalyticsQueryOptions {
+  /**
+   * Only include reviews created at/after this ISO timestamp (the analytics
+   * window). Omit for all-time.
+   */
+  sinceIso?: string;
+  /** Safety cap on the number of reviews scanned (defends against unbounded scans). */
+  limit?: number;
+}
+
+/**
+ * Fetch a company's reviews together with their persona_scores for the
+ * analytics data layer (DailyPlan Day 31). Ordered oldest-first so the caller
+ * can bucket them into a time series without re-sorting. Tenancy is explicit:
+ * `companyId` is server-derived (never the client — Rules.md §5) and applied as
+ * the `company_id` filter; reads go through the request-scoped anon client so
+ * RLS is the primary guard on both `reviews` and `persona_scores` (each has a
+ * SELECT policy), with this filter as a second layer.
+ *
+ * Uses one nested select so a review and its five scores cross the wire
+ * together (index: persona_scores(review_id)); the aggregation itself lives in
+ * pure functions in `src/lib/reviews/analytics.ts`, keeping this helper a thin,
+ * testable read. The row cap is a scan guard, not a page size — analytics over
+ * a bounded window stays well under it.
+ */
+export async function listReviewsWithScoresByCompany(
+  db: SupabaseClient,
+  companyId: string,
+  options: AnalyticsQueryOptions = {},
+): Promise<ReviewWithScores[]> {
+  const limit = options.limit ?? 1000;
+  let query = db
+    .from("reviews")
+    .select("*, persona_scores(*)")
+    .eq("company_id", companyId);
+  if (options.sinceIso) query = query.gte("created_at", options.sinceIso);
+  const { data, error } = await query
+    .order("created_at", { ascending: true })
+    .limit(limit);
+  if (error) fail("listReviewsWithScoresByCompany", error);
+
+  type NestedRow = ReviewRow & { persona_scores: PersonaScoreRow[] | null };
+  return ((data as NestedRow[] | null) ?? []).map((row) => {
+    const { persona_scores, ...review } = row;
+    return { review: review as ReviewRow, scores: persona_scores ?? [] };
+  });
+}

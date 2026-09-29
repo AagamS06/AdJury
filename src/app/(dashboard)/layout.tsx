@@ -47,6 +47,7 @@ export default async function DashboardLayout({
             <NavLink href="/dashboard">Dashboard</NavLink>
             <NavLink href="/review">New review</NavLink>
             <NavLink href="/history">History</NavLink>
+            <NavLink href="/analytics">Analytics</NavLink>
             {isAdmin && <NavLink href="/brand">Brand</NavLink>}
             {isAdmin && <NavLink href="/team">Team</NavLink>}
           </nav>

@@ -4,17 +4,19 @@ import {
   type ChartDimensions,
 } from "@/lib/reviews/analytics-view";
 import type { ScoreTrendPoint, TrendGranularity } from "@/lib/reviews/analytics";
+import { TrendChartSvg } from "./trend-chart";
 
 /**
  * Score-trend chart (DailyPlan Day 32): a company's average review score over
  * time, rendered as plain inline SVG (no charting dependency — Rules.md §2).
  *
  * Hook-free and presentational, like `<Scorecard>`: all geometry comes from the
- * pure, tested `buildScoreTrendChart` in `analytics-view.ts`. Meaning is never
- * carried by the line alone (Design.md §6) — the SVG has a `<title>`/`<desc>`,
- * and an equivalent data table lives below it (in a `<details>`), so keyboard and
- * screen-reader users get the same numbers. Colour comes via `currentColor` +
- * Tailwind `text-*` tokens so the palette stays in one place (Design.md §2).
+ * pure, tested `buildScoreTrendChart` in `analytics-view.ts`, drawn by the
+ * shared `<TrendChartSvg>` (Day 33 factored out the SVG so the company and
+ * per-juror charts render identically). Meaning is never carried by the line
+ * alone (Design.md §6) — the SVG has a `<title>`/`<desc>`, and an equivalent
+ * data table lives below it (in a `<details>`), so keyboard and screen-reader
+ * users get the same numbers.
  */
 export function ScoreTrendChart({
   scoreTrend,
@@ -30,101 +32,17 @@ export function ScoreTrendChart({
   descId?: string;
 }) {
   const chart = buildScoreTrendChart(scoreTrend, granularity, dimensions);
-  const { plot } = chart;
   const description = scoreTrendDescription(chart);
 
   return (
     <figure className="m-0">
-      <svg
-        role="img"
-        aria-labelledby={`${titleId} ${descId}`}
-        viewBox={`0 0 ${chart.dimensions.width} ${chart.dimensions.height}`}
-        className="h-auto w-full"
-        preserveAspectRatio="xMidYMid meet"
-      >
-        <title id={titleId}>Average review score over time</title>
-        <desc id={descId}>{description}</desc>
-
-        {/* Horizontal gridlines + y-axis score labels (0–10). */}
-        <g className="text-border" aria-hidden="true">
-          {chart.yTicks.map((tick) => (
-            <line
-              key={`grid-${tick.value}`}
-              x1={plot.left}
-              y1={tick.y}
-              x2={plot.right}
-              y2={tick.y}
-              stroke="currentColor"
-              strokeWidth={1}
-            />
-          ))}
-        </g>
-        <g className="text-muted" aria-hidden="true" fontSize={11}>
-          {chart.yTicks.map((tick) => (
-            <text
-              key={`ylabel-${tick.value}`}
-              x={plot.left - 8}
-              y={tick.y}
-              textAnchor="end"
-              dominantBaseline="middle"
-              fill="currentColor"
-            >
-              {tick.label}
-            </text>
-          ))}
-        </g>
-
-        {/* x-axis date labels. */}
-        <g className="text-muted" aria-hidden="true" fontSize={11}>
-          {chart.xTicks.map((tick, i) => (
-            <text
-              key={`xlabel-${i}`}
-              x={tick.x}
-              y={plot.bottom + 18}
-              textAnchor="middle"
-              fill="currentColor"
-            >
-              {tick.label}
-            </text>
-          ))}
-        </g>
-
-        {/* Filled area + trend line (2+ points). */}
-        {chart.areaPath && (
-          <path
-            className="text-royal"
-            d={chart.areaPath}
-            fill="currentColor"
-            fillOpacity={0.08}
-            aria-hidden="true"
-          />
-        )}
-        {chart.linePath && (
-          <path
-            className="text-royal"
-            d={chart.linePath}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            aria-hidden="true"
-          />
-        )}
-
-        {/* Data points. */}
-        <g className="text-royal" aria-hidden="true">
-          {chart.points.map((p) => (
-            <circle
-              key={`pt-${p.period}`}
-              cx={p.x}
-              cy={p.y}
-              r={chart.points.length === 1 ? 4 : 3}
-              fill="currentColor"
-            />
-          ))}
-        </g>
-      </svg>
+      <TrendChartSvg
+        chart={chart}
+        title="Average review score over time"
+        description={description}
+        titleId={titleId}
+        descId={descId}
+      />
 
       <figcaption className="mt-2 text-center text-sm text-muted">
         Average review score (0–10) per {granularity}.

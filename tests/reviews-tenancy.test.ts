@@ -4,6 +4,7 @@ import {
   getReviewById,
   insertReviewWithScores,
   listReviewsByCompany,
+  listReviewsWithScoresByCompany,
 } from "@/lib/db/queries";
 import { getReviewForCompany } from "@/lib/reviews/read-reviews";
 import { PERSONA_NAMES, type ReviewResult } from "@/lib/schema/juror";
@@ -35,6 +36,8 @@ interface RecordedCall {
   table: string;
   op: "select" | "insert" | "delete";
   filters: Record<string, unknown>;
+  gteFilters: Record<string, unknown>;
+  selection: string | undefined;
   ordered: boolean;
 }
 
@@ -48,6 +51,8 @@ interface RecordedCall {
 class FakeBuilder implements PromiseLike<QueryResult> {
   op: RecordedCall["op"] = "select";
   filters: Record<string, unknown> = {};
+  gteFilters: Record<string, unknown> = {};
+  selection: string | undefined = undefined;
   ordered = false;
   inserted: unknown = undefined;
 
@@ -57,7 +62,8 @@ class FakeBuilder implements PromiseLike<QueryResult> {
     private readonly record: (b: FakeBuilder) => void,
   ) {}
 
-  select(): this {
+  select(selection?: string): this {
+    if (selection !== undefined) this.selection = selection;
     return this;
   }
   insert(values: unknown): this {
@@ -71,6 +77,10 @@ class FakeBuilder implements PromiseLike<QueryResult> {
   }
   eq(col: string, val: unknown): this {
     this.filters[col] = val;
+    return this;
+  }
+  gte(col: string, val: unknown): this {
+    this.gteFilters[col] = val;
     return this;
   }
   order(): this {
@@ -104,7 +114,14 @@ class FakeBuilder implements PromiseLike<QueryResult> {
 function fakeDb(resolve: (b: FakeBuilder) => QueryResult) {
   const calls: RecordedCall[] = [];
   const record = (b: FakeBuilder) =>
-    calls.push({ table: b.table, op: b.op, filters: b.filters, ordered: b.ordered });
+    calls.push({
+      table: b.table,
+      op: b.op,
+      filters: b.filters,
+      gteFilters: b.gteFilters,
+      selection: b.selection,
+      ordered: b.ordered,
+    });
   const db = {
     from: (table: string) => new FakeBuilder(table, resolve, record),
   } as unknown as SupabaseClient;
@@ -182,6 +199,40 @@ describe("listReviewsByCompany scoping", () => {
     const listCall = calls.find((c) => c.table === "reviews");
     expect(listCall?.filters).toEqual({ company_id: COMPANY_A });
     expect(listCall?.ordered).toBe(true);
+  });
+});
+
+describe("listReviewsWithScoresByCompany scoping (analytics — Day 31)", () => {
+  it("filters by company_id, applies the since window, and nests persona_scores", async () => {
+    const { db, calls } = fakeDb(() => ({
+      data: [{ ...reviewRowFor(COMPANY_A), persona_scores: [] }],
+      error: null,
+    }));
+
+    const out = await listReviewsWithScoresByCompany(db, COMPANY_A, {
+      sinceIso: "2026-08-01T00:00:00.000Z",
+    });
+
+    const call = calls.find((c) => c.table === "reviews");
+    // Tenancy: scoped to the company (Rules.md §5); window applied; scores joined.
+    expect(call?.filters).toEqual({ company_id: COMPANY_A });
+    expect(call?.gteFilters).toEqual({ created_at: "2026-08-01T00:00:00.000Z" });
+    expect(call?.selection).toBe("*, persona_scores(*)");
+    // Nested rows are split into { review, scores } and never carry another company's id.
+    expect(out).toHaveLength(1);
+    expect(out[0].review.company_id).toBe(COMPANY_A);
+    expect(out[0]).not.toHaveProperty("persona_scores");
+    expect(out[0].scores).toEqual([]);
+  });
+
+  it("omits the since filter when no window is given", async () => {
+    const { db, calls } = fakeDb(() => ({ data: [], error: null }));
+
+    await listReviewsWithScoresByCompany(db, COMPANY_A);
+
+    const call = calls.find((c) => c.table === "reviews");
+    expect(call?.filters).toEqual({ company_id: COMPANY_A });
+    expect(call?.gteFilters).toEqual({});
   });
 });
 

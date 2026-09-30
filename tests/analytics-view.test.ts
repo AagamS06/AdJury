@@ -1,16 +1,23 @@
 import { describe, it, expect } from "vitest";
 import type {
+  JurorTrend,
+  JurorTrendPoint,
   ScoreTrendPoint,
   VerdictDistribution,
 } from "@/lib/reviews/analytics";
 import {
+  buildJurorBreakdown,
+  buildJurorTrendChart,
   buildScoreTrendChart,
   DEFAULT_CHART_DIMENSIONS,
   formatPeriodLabel,
+  JUROR_CHART_DIMENSIONS,
+  jurorTrendDescription,
   pickTickIndices,
   scoreTrendDescription,
   verdictShares,
 } from "@/lib/reviews/analytics-view";
+import { PERSONA_NAMES, type PersonaName } from "@/lib/schema/juror";
 
 /**
  * Analytics dashboard view helpers (DailyPlan Day 32): the pure geometry and
@@ -183,5 +190,210 @@ describe("verdictShares", () => {
   it("reports 0% for every verdict when there are no verdicted reviews", () => {
     const dist: VerdictDistribution = { pass: 0, revise: 0, fail: 0, total: 0 };
     expect(verdictShares(dist).every((s) => s.pct === 0)).toBe(true);
+  });
+});
+
+// ── per-juror breakdown (Day 33) ─────────────────────────────────────────────
+
+function jpoint(
+  period: string,
+  averageScore: number | null,
+  scoredCount = averageScore === null ? 0 : 1,
+): JurorTrendPoint {
+  return { period, scoredCount, averageScore };
+}
+
+function jtrend(
+  persona: PersonaName,
+  points: JurorTrendPoint[],
+  overallAverage: number | null,
+  scoredCount: number,
+): JurorTrend {
+  return { persona, points, overallAverage, scoredCount };
+}
+
+describe("buildJurorTrendChart", () => {
+  it("reports no data for a juror that never scored", () => {
+    const chart = buildJurorTrendChart(
+      jtrend("seo_discoverability", [], null, 0),
+      "day",
+    );
+    expect(chart.hasData).toBe(false);
+    expect(chart.points).toEqual([]);
+    expect(chart.linePath).toBe("");
+    expect(chart.areaPath).toBe("");
+    expect(chart.xTicks).toEqual([]);
+  });
+
+  it("uses the shorter juror dimensions and the fixed 0–10 y-axis", () => {
+    const chart = buildJurorTrendChart(
+      jtrend("brand_voice_guardian", [jpoint("2026-09-01", 5)], 5, 1),
+      "day",
+    );
+    expect(chart.dimensions).toEqual(JUROR_CHART_DIMENSIONS);
+    expect(chart.yTicks.map((t) => t.value)).toEqual([0, 2, 4, 6, 8, 10]);
+    // score 10 at the top padding, score 0 at the baseline.
+    expect(chart.yTicks.find((t) => t.value === 10)!.y).toBe(
+      JUROR_CHART_DIMENSIONS.padding.top,
+    );
+    expect(chart.yTicks.find((t) => t.value === 0)!.y).toBe(chart.baselineY);
+  });
+
+  it("centers a single point and draws no connecting line", () => {
+    const chart = buildJurorTrendChart(
+      jtrend("target_audience_fit", [jpoint("2026-09-01", 5)], 5, 1),
+      "day",
+    );
+    expect(chart.points).toHaveLength(1);
+    // plot.left 36 + width 664 / 2 = 368
+    expect(chart.points[0].x).toBe(368);
+    // score 5 → 12 + 0.5*138 = 81
+    expect(chart.points[0].y).toBeCloseTo(81, 2);
+    expect(chart.points[0].scoredCount).toBe(1);
+    expect(chart.linePath).toBe("");
+  });
+
+  it("maps multiple points left-to-right and builds line + area paths", () => {
+    const chart = buildJurorTrendChart(
+      jtrend(
+        "stop_scrolling",
+        [jpoint("2026-09-01", 0), jpoint("2026-09-02", 4), jpoint("2026-09-03", 10)],
+        4.7,
+        3,
+      ),
+      "day",
+    );
+    expect(chart.points.map((p) => p.x)).toEqual([36, 368, 700]);
+    // score 0 → 150 (baseline), 4 → 94.8, 10 → 12
+    expect(chart.points.map((p) => p.y)).toEqual([150, 94.8, 12]);
+    expect(chart.linePath).toBe("M 36 150 L 368 94.8 L 700 12");
+    expect(chart.areaPath.startsWith("M 36 150")).toBe(true);
+    expect(chart.areaPath.endsWith("L 700 150 Z")).toBe(true);
+  });
+
+  it("plots only buckets the juror scored (a null-average bucket leaves no point)", () => {
+    const chart = buildJurorTrendChart(
+      jtrend(
+        "compliance_legal_flagger",
+        [
+          jpoint("2026-09-01", 6),
+          jpoint("2026-09-02", null, 0), // present but unscored → dropped
+          jpoint("2026-09-03", 8),
+        ],
+        7,
+        2,
+      ),
+      "day",
+    );
+    expect(chart.points.map((p) => p.period)).toEqual([
+      "2026-09-01",
+      "2026-09-03",
+    ]);
+    expect(chart.points.map((p) => p.label)).toEqual(["Sep 1", "Sep 3"]);
+    expect(chart.points[0].x).toBe(36);
+    expect(chart.points[1].x).toBe(700);
+  });
+});
+
+describe("jurorTrendDescription", () => {
+  it("names the lens in the empty case", () => {
+    const chart = buildJurorTrendChart(
+      jtrend("seo_discoverability", [], null, 0),
+      "day",
+    );
+    expect(jurorTrendDescription(chart, "SEO / Discoverability")).toMatch(
+      /no trend to show/i,
+    );
+    expect(jurorTrendDescription(chart, "SEO / Discoverability")).toContain(
+      "SEO / Discoverability",
+    );
+  });
+
+  it("describes a single point with the lens name", () => {
+    const chart = buildJurorTrendChart(
+      jtrend("brand_voice_guardian", [jpoint("2026-09-01", 7)], 7, 1),
+      "day",
+    );
+    expect(jurorTrendDescription(chart, "Brand Voice Guardian")).toBe(
+      "Brand Voice Guardian scored 7.0 out of 10 for Sep 1.",
+    );
+  });
+
+  it("names the trend direction across multiple points", () => {
+    const up = buildJurorTrendChart(
+      jtrend(
+        "brand_voice_guardian",
+        [jpoint("2026-09-01", 4), jpoint("2026-09-02", 8)],
+        6,
+        2,
+      ),
+      "day",
+    );
+    expect(jurorTrendDescription(up, "Brand Voice Guardian")).toMatch(
+      /trending up/,
+    );
+
+    const down = buildJurorTrendChart(
+      jtrend(
+        "brand_voice_guardian",
+        [jpoint("2026-09-01", 8), jpoint("2026-09-02", 4)],
+        6,
+        2,
+      ),
+      "day",
+    );
+    expect(jurorTrendDescription(down, "Brand Voice Guardian")).toMatch(
+      /trending down/,
+    );
+
+    const level = buildJurorTrendChart(
+      jtrend(
+        "brand_voice_guardian",
+        [jpoint("2026-09-01", 6), jpoint("2026-09-02", 6)],
+        6,
+        2,
+      ),
+      "day",
+    );
+    expect(jurorTrendDescription(level, "Brand Voice Guardian")).toMatch(
+      /trending level/,
+    );
+  });
+});
+
+describe("buildJurorBreakdown", () => {
+  it("returns one row per juror, preserving the input (canonical) order", () => {
+    const trends: JurorTrend[] = PERSONA_NAMES.map((persona) =>
+      jtrend(persona, [jpoint("2026-09-01", 8)], 8, 1),
+    );
+    const rows = buildJurorBreakdown(trends, "day");
+    expect(rows.map((r) => r.persona)).toEqual([...PERSONA_NAMES]);
+    // Labels come from the shared persona labels (human names).
+    expect(rows[0].label).toBe("Brand Voice Guardian");
+    expect(rows[3].label).toBe("SEO / Discoverability");
+    expect(rows.every((r) => r.chart.hasData)).toBe(true);
+  });
+
+  it("maps a scored juror's overall average to a score chip tone + tier word", () => {
+    const [row] = buildJurorBreakdown(
+      [jtrend("brand_voice_guardian", [jpoint("2026-09-01", 9.2)], 9.2, 1)],
+      "day",
+    );
+    expect(row.overallAverage).toBe(9.2);
+    expect(row.scoredCount).toBe(1);
+    expect(row.tone).toBe("success");
+    expect(row.tierLabel).toBe("Excellent");
+  });
+
+  it("reads neutral with no tier word for a juror that never scored", () => {
+    const [row] = buildJurorBreakdown(
+      [jtrend("compliance_legal_flagger", [], null, 0)],
+      "day",
+    );
+    expect(row.overallAverage).toBeNull();
+    expect(row.scoredCount).toBe(0);
+    expect(row.tone).toBe("neutral");
+    expect(row.tierLabel).toBeNull();
+    expect(row.chart.hasData).toBe(false);
   });
 });

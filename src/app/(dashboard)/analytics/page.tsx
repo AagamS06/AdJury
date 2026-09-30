@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { JurorBreakdown } from "@/components/review/juror-breakdown";
 import { ScoreTrendChart } from "@/components/review/score-trend-chart";
 import { PILL_CLASSES } from "@/components/review/tone-classes";
 import { requireSession } from "@/lib/auth/guard";
@@ -76,8 +77,13 @@ export default async function AnalyticsPage() {
 }
 
 function AnalyticsBody({ analytics }: { analytics: CompanyAnalytics }) {
-  const { totalReviews, overallAverageScore, verdictDistribution, scoreTrend } =
-    analytics;
+  const {
+    totalReviews,
+    overallAverageScore,
+    verdictDistribution,
+    scoreTrend,
+    jurorTrends,
+  } = analytics;
   const shares = verdictShares(verdictDistribution);
 
   if (totalReviews === 0) {
@@ -148,6 +154,12 @@ function AnalyticsBody({ analytics }: { analytics: CompanyAnalytics }) {
           </p>
         )}
       </section>
+
+      {/* Per-juror drill-down (Day 33): each lens's trend over time. */}
+      <JurorBreakdown
+        jurorTrends={jurorTrends}
+        granularity={analytics.granularity}
+      />
     </div>
   );
 }

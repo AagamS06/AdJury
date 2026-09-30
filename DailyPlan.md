@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-09-29 (Day 32 — Analytics dashboard UI)
+> **Status:** Active · **Last updated:** 2026-09-30 (Day 33 — Per-juror breakdown)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -163,8 +163,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Score-trend chart on a dashboard page. **Completed 2026-09-29.**
 - DoD: chart renders company data.
 
-### Day 33 — Per-juror breakdown
-- [ ] Drill-down: trend per juror lens.
+### Day 33 — Per-juror breakdown ✅
+- [x] Drill-down: trend per juror lens. **Completed 2026-09-30.**
 - DoD: per-juror trends render.
 
 ### Day 34 — Analytics states

@@ -15,6 +15,7 @@ import {
   jurorTrendDescription,
   pickTickIndices,
   scoreTrendDescription,
+  summarizeAnalyticsState,
   verdictShares,
 } from "@/lib/reviews/analytics-view";
 import { PERSONA_NAMES, type PersonaName } from "@/lib/schema/juror";
@@ -358,6 +359,74 @@ describe("jurorTrendDescription", () => {
     expect(jurorTrendDescription(level, "Brand Voice Guardian")).toMatch(
       /trending level/,
     );
+  });
+});
+
+// ── analytics display states (Day 34) ───────────────────────────────────────
+
+describe("summarizeAnalyticsState", () => {
+  it("reports `empty` with a CTA headline when there are no reviews", () => {
+    const state = summarizeAnalyticsState({ totalReviews: 0, scoreTrend: [] });
+    expect(state.kind).toBe("empty");
+    expect(state.totalReviews).toBe(0);
+    expect(state.scoredReviews).toBe(0);
+    expect(state.scoredPeriods).toBe(0);
+    expect(state.headline).toMatch(/no analytics/i);
+    expect(state.detail).not.toBeNull();
+  });
+
+  it("reports `unscored` when reviews exist but none were scored", () => {
+    // Two reviews on two days, neither scored (e.g. every juror errored).
+    const state = summarizeAnalyticsState({
+      totalReviews: 2,
+      scoreTrend: [
+        point("2026-09-01", null, 1, 0),
+        point("2026-09-02", null, 1, 0),
+      ],
+    });
+    expect(state.kind).toBe("unscored");
+    expect(state.scoredReviews).toBe(0);
+    expect(state.scoredPeriods).toBe(0);
+    expect(state.headline).toMatch(/no scored reviews/i);
+    expect(state.detail).not.toBeNull();
+  });
+
+  it("reports `low-data` when only a single period is scored (no trend line)", () => {
+    const state = summarizeAnalyticsState({
+      totalReviews: 3,
+      scoreTrend: [
+        point("2026-09-01", 7, 2, 2), // one bucket, two scored reviews
+        point("2026-09-02", null, 1, 0),
+      ],
+    });
+    expect(state.kind).toBe("low-data");
+    expect(state.scoredReviews).toBe(2);
+    expect(state.scoredPeriods).toBe(1);
+    expect(state.headline).toMatch(/getting started/i);
+    expect(state.detail).toMatch(/trend line/i);
+  });
+
+  it("reports `ready` with no copy once two or more periods are scored", () => {
+    const state = summarizeAnalyticsState({
+      totalReviews: 2,
+      scoreTrend: [point("2026-09-01", 6), point("2026-09-02", 8)],
+    });
+    expect(state.kind).toBe("ready");
+    expect(state.scoredReviews).toBe(2);
+    expect(state.scoredPeriods).toBe(2);
+    expect(state.headline).toBeNull();
+    expect(state.detail).toBeNull();
+  });
+
+  it("counts scored reviews across buckets even when periods are few", () => {
+    // Several scored reviews but all in one bucket → still low-data (one point).
+    const state = summarizeAnalyticsState({
+      totalReviews: 5,
+      scoreTrend: [point("2026-09-01", 7.4, 5, 5)],
+    });
+    expect(state.kind).toBe("low-data");
+    expect(state.scoredReviews).toBe(5);
+    expect(state.scoredPeriods).toBe(1);
   });
 });
 

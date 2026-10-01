@@ -14,6 +14,7 @@
  * the component pairs it with an accessible data table built from these points.
  */
 import type {
+  CompanyAnalytics,
   JurorTrend,
   ScoreTrendPoint,
   TrendGranularity,
@@ -477,6 +478,92 @@ export interface VerdictShareView {
   count: number;
   /** Whole-number percentage of verdicted reviews; 0 when none. */
   pct: number;
+}
+
+// ── analytics readiness / low-data states (DailyPlan Day 34) ─────────────────
+
+/**
+ * The display state of a company's analytics, so the dashboard can show a
+ * graceful message when there's little or no data instead of a bare or
+ * confusing chart (DailyPlan Day 34 — DoD: graceful with little/no data).
+ *
+ * Driven only by the already-computed `CompanyAnalytics`, so it stays pure and
+ * node-testable like the rest of this module — the page just maps the `kind` to
+ * a block and surfaces the `headline`/`detail` copy verbatim.
+ *
+ *  - `empty`    — no reviews at all; the page prompts the first review.
+ *  - `unscored` — reviews exist but none produced an aggregate score (e.g. every
+ *                 juror errored — a failed review is not a zero, Rules.md §6), so
+ *                 there is nothing to trend yet.
+ *  - `low-data` — exactly one scored period, so a single point is plotted and no
+ *                 trend line can be drawn; the chart still shows, with a hint so
+ *                 the lone dot doesn't read as a glitch.
+ *  - `ready`    — two or more scored periods; the trend line is meaningful.
+ */
+export type AnalyticsStateKind = "empty" | "unscored" | "low-data" | "ready";
+
+export interface AnalyticsStateSummary {
+  kind: AnalyticsStateKind;
+  /** All reviews in the window (scored or not). */
+  totalReviews: number;
+  /** Reviews in the window that carry an aggregate score. */
+  scoredReviews: number;
+  /** Distinct time buckets that have a mean score (i.e. plottable points). */
+  scoredPeriods: number;
+  /** Short plain-language headline for a non-`ready` state; null when ready. */
+  headline: string | null;
+  /** One supporting sentence for a non-`ready` state; null when ready. */
+  detail: string | null;
+}
+
+/**
+ * Classify a company's analytics into a display state. Only the review totals
+ * and the score trend decide it: a review is "scored" when its bucket carries a
+ * mean score, so a review whose jurors all errored (no aggregate) never inflates
+ * the counts (Rules.md §6). `scoredReviews > 0` always implies at least one
+ * scored period, so the `unscored` and `low-data` branches don't overlap.
+ */
+export function summarizeAnalyticsState(
+  analytics: Pick<CompanyAnalytics, "totalReviews" | "scoreTrend">,
+): AnalyticsStateSummary {
+  const { totalReviews, scoreTrend } = analytics;
+  const scoredReviews = scoreTrend.reduce((sum, p) => sum + p.scoredCount, 0);
+  const scoredPeriods = scoreTrend.filter(
+    (p) => p.averageScore !== null,
+  ).length;
+  const base = { totalReviews, scoredReviews, scoredPeriods };
+
+  if (totalReviews === 0) {
+    return {
+      ...base,
+      kind: "empty",
+      headline: "No analytics yet",
+      detail:
+        "Run a review and your score trend and verdict mix will start to appear here.",
+    };
+  }
+
+  if (scoredReviews === 0) {
+    return {
+      ...base,
+      kind: "unscored",
+      headline: "No scored reviews yet",
+      detail:
+        "Your reviews are in, but none have returned a score yet. Once a review is scored, its trend will appear here.",
+    };
+  }
+
+  if (scoredPeriods === 1) {
+    return {
+      ...base,
+      kind: "low-data",
+      headline: "Just getting started",
+      detail:
+        "There's one scored period so far, so there's no trend line to draw yet — it will take shape as you run more reviews.",
+    };
+  }
+
+  return { ...base, kind: "ready", headline: null, detail: null };
 }
 
 const VERDICT_ORDER: readonly Verdict[] = ["pass", "revise", "fail"];

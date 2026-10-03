@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-10-02 (Day 35 — Week 5 hardening)
+> **Status:** Active · **Last updated:** 2026-10-03 (Day 36 — CSV: single review)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -179,8 +179,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 
 ## Week 6 — Export & reporting
 
-### Day 36 — CSV: single review
-- [ ] Export one review to CSV.
+### Day 36 — CSV: single review ✅
+- [x] Export one review to CSV. **Completed 2026-10-03.**
 - DoD: valid CSV downloads.
 
 ### Day 37 — CSV: history

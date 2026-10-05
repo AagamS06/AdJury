@@ -19,6 +19,15 @@
  * and the failure reason goes in the summary column.
  */
 import {
+  CRLF,
+  escapeCsvField,
+  formatAggregateCell,
+  sanitizeFilenamePart,
+  toCsvRow,
+  UTF8_BOM,
+  utcDateStamp,
+} from "@/lib/reviews/csv";
+import {
   contentTypeLabel,
   formatHistoryDate,
   platformLabel,
@@ -27,12 +36,9 @@ import { PERSONA_LABELS } from "@/lib/reviews/review-form";
 import type { PersistedReview } from "@/lib/reviews/read-reviews";
 import { severityLabel, verdictLabel } from "@/lib/reviews/scorecard-view";
 
-/**
- * UTF-8 byte-order mark. Prepended by the route (not baked into `reviewToCsv`,
- * which stays a clean parseable string) so Excel reliably reads non-ASCII
- * content (accented characters, smart quotes) as UTF-8 rather than mojibake.
- */
-export const UTF8_BOM = "﻿";
+// Re-exported so existing importers (and Day 36's tests) keep a stable surface
+// while the escaping/BOM primitives themselves live in the shared `csv` module.
+export { UTF8_BOM, escapeCsvField };
 
 /** The CSV column headers, in order. Exported so tests pin the layout. */
 export const REVIEW_CSV_HEADERS = [
@@ -52,46 +58,6 @@ export const REVIEW_CSV_HEADERS = [
   "Issues",
   "Suggested rewrite",
 ] as const;
-
-/** RFC 4180 record separator. */
-const CRLF = "\r\n";
-
-/** Leading characters a spreadsheet may interpret as a formula. */
-const FORMULA_PREFIX = /^[=+\-@\t\r]/;
-
-/** Characters that force a field to be quoted under RFC 4180. */
-const MUST_QUOTE = /[",\r\n]/;
-
-/**
- * Escape one field for CSV output:
- *  1. **Formula-injection guard** — a field whose first character could start a
- *     spreadsheet formula (`= + - @`, tab, CR) is prefixed with a single quote
- *     so Excel/Sheets treat it as text. Content here is user-supplied in a
- *     multi-tenant app, so this is a real safety concern (Rules.md §5), worth a
- *     minor, documented alteration of such values.
- *  2. **RFC 4180 quoting** — a field containing a quote, comma, CR, or LF is
- *     wrapped in double quotes with internal quotes doubled.
- */
-export function escapeCsvField(raw: string): string {
-  let value = raw;
-  if (value.length > 0 && FORMULA_PREFIX.test(value)) {
-    value = `'${value}`;
-  }
-  if (MUST_QUOTE.test(value)) {
-    value = `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
-
-/** Join a row of already-stringified fields into one escaped CSV record. */
-function toCsvRow(fields: string[]): string {
-  return fields.map(escapeCsvField).join(",");
-}
-
-/** Format the aggregate score for a data cell: empty when never scored. */
-function formatAggregateCell(score: number | null): string {
-  return score === null ? "" : score.toFixed(1);
-}
 
 /** Capitalize a confidence value for the (already-titled) Confidence column. */
 function confidenceCell(confidence: "high" | "medium" | "low"): string {
@@ -173,11 +139,6 @@ export function reviewToCsv(review: PersistedReview): string {
   return [header, ...rows].join(CRLF);
 }
 
-/** Replace any unsafe filename character with a hyphen. */
-function sanitizeFilenamePart(part: string): string {
-  return part.replace(/[^A-Za-z0-9._-]/g, "-");
-}
-
 /**
  * A safe, descriptive download filename for a single review's CSV, e.g.
  * `adjury-review-<id>-2026-10-01.csv`. The date (UTC) is omitted if
@@ -189,8 +150,5 @@ export function reviewCsvFilename(review: PersistedReview): string {
   if (Number.isNaN(parsed.getTime())) {
     return `adjury-review-${id}.csv`;
   }
-  const yyyy = parsed.getUTCFullYear();
-  const mm = String(parsed.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(parsed.getUTCDate()).padStart(2, "0");
-  return `adjury-review-${id}-${yyyy}-${mm}-${dd}.csv`;
+  return `adjury-review-${id}-${utcDateStamp(parsed)}.csv`;
 }

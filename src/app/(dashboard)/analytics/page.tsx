@@ -7,7 +7,10 @@ import { getSessionContext } from "@/lib/auth/session";
 import { createServerSupabase } from "@/lib/auth/supabase-server";
 import { listReviewsWithScoresByCompany } from "@/lib/db/queries";
 import { getCompanyAnalytics, type CompanyAnalytics } from "@/lib/reviews/analytics";
-import { verdictShares } from "@/lib/reviews/analytics-view";
+import {
+  summarizeAnalyticsState,
+  verdictShares,
+} from "@/lib/reviews/analytics-view";
 import { formatAggregate } from "@/lib/reviews/scorecard-view";
 
 /**
@@ -23,9 +26,13 @@ import { formatAggregate } from "@/lib/reviews/scorecard-view";
  * both `reviews` and `persona_scores`. A load failure surfaces a plain-language
  * message rather than crashing (Rules.md §6).
  *
- * Scope (Day 32): the score-trend chart + summary. The per-juror drill-down is
- * Day 33; the richer empty/low-data and loading/error states are Day 34 — this
- * page ships only a basic empty note and inline error for now.
+ * States (Day 34): the body is classified by the pure `summarizeAnalyticsState`
+ * into empty / unscored / low-data / ready, so the page reads gracefully with
+ * little or no data (DoD) — an empty CTA when there are no reviews, a plain-
+ * language notice when reviews exist but aren't scored yet or there's only a
+ * single scored period, and the full charts once a trend is meaningful. The
+ * inline error state (above) and a route-level loading skeleton (`loading.tsx`)
+ * complete the loading/error coverage.
  */
 export const dynamic = "force-dynamic";
 
@@ -84,15 +91,16 @@ function AnalyticsBody({ analytics }: { analytics: CompanyAnalytics }) {
     scoreTrend,
     jurorTrends,
   } = analytics;
+  const state = summarizeAnalyticsState(analytics);
   const shares = verdictShares(verdictDistribution);
 
-  if (totalReviews === 0) {
+  // No reviews at all: a focused empty state with a call to action, nothing else.
+  if (state.kind === "empty") {
     return (
       <div className="mt-8 rounded-md border border-border bg-surface p-8 text-center shadow-[0_1px_2px_rgba(11,11,15,.06)]">
-        <h2 className="text-lg font-semibold text-navy">No analytics yet</h2>
+        <h2 className="text-lg font-semibold text-navy">{state.headline}</h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-muted">
-          Run a review and your score trend and verdict mix will start to appear
-          here.
+          {state.detail}
         </p>
         <Link
           href="/review"
@@ -106,6 +114,19 @@ function AnalyticsBody({ analytics }: { analytics: CompanyAnalytics }) {
 
   return (
     <div className="mt-8 space-y-8">
+      {/* Low-data / unscored notice: reviews exist but there's little to trend
+          yet, so explain why the charts are sparse rather than leaving a lone
+          dot or an empty line looking like a glitch (Day 34). */}
+      {(state.kind === "unscored" || state.kind === "low-data") && (
+        <div
+          role="status"
+          className="rounded-md border border-royal/20 bg-royal/5 px-4 py-3"
+        >
+          <p className="text-sm font-semibold text-navy">{state.headline}</p>
+          <p className="mt-1 text-sm text-body">{state.detail}</p>
+        </div>
+      )}
+
       {/* Summary tiles */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile label="Reviews" value={String(totalReviews)} />

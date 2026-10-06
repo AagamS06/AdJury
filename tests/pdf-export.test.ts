@@ -101,6 +101,81 @@ function countPages(pdf: string): number {
   return (pdf.match(/\/Type \/Page \/Parent/g) ?? []).length;
 }
 
+// ── Content-stream op parser (Day 39 polish: colour, chips, pills, logo) ─────
+
+type Color = [number, number, number];
+interface RectOp {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: Color | null;
+}
+interface TextOp {
+  text: string;
+  color: Color | null;
+}
+
+/**
+ * Walk the content-stream operators, tracking the current fill colour (`rg`),
+ * so we can assert which colour each filled rectangle (chip/pill/band/rule) and
+ * each text run is drawn in — the whole point of the Day 39 polish.
+ */
+function parseOps(pdf: string): { rects: RectOp[]; texts: TextOp[] } {
+  const rects: RectOp[] = [];
+  const texts: TextOp[] = [];
+  let color: Color | null = null;
+  for (const line of pdf.split("\n")) {
+    let m: RegExpMatchArray | null;
+    if ((m = line.match(/^(-?\d*\.?\d+) (-?\d*\.?\d+) (-?\d*\.?\d+) rg$/))) {
+      color = [Number(m[1]), Number(m[2]), Number(m[3])];
+    } else if (
+      (m = line.match(/^(-?\d*\.?\d+) (-?\d*\.?\d+) (-?\d*\.?\d+) (-?\d*\.?\d+) re$/))
+    ) {
+      rects.push({ x: Number(m[1]), y: Number(m[2]), w: Number(m[3]), h: Number(m[4]), color });
+    } else if (line.startsWith("(") && line.endsWith(") Tj")) {
+      const raw = line.slice(1, -4);
+      texts.push({
+        text: raw.replace(/\\\(/g, "(").replace(/\\\)/g, ")").replace(/\\\\/g, "\\"),
+        color,
+      });
+    }
+  }
+  return { rects, texts };
+}
+
+function hexToRgb(value: string): Color {
+  const n = parseInt(value.replace("#", ""), 16);
+  return [((n >> 16) & 0xff) / 255, ((n >> 8) & 0xff) / 255, (n & 0xff) / 255];
+}
+
+/** The PDF rounds colours to 2dp, so compare with a small tolerance. */
+function colorIs(color: Color | null, hex: string): boolean {
+  if (color === null) return false;
+  const e = hexToRgb(hex);
+  return color.every((c, i) => Math.abs(c - e[i]) < 0.012);
+}
+
+/** True when some filled rectangle is drawn in the given hex colour. */
+function hasRectColor(pdf: string, hex: string): boolean {
+  return parseOps(pdf).rects.some((r) => colorIs(r.color, hex));
+}
+
+/** The parsed text op whose rendered text exactly matches, or undefined. */
+function findText(pdf: string, text: string): TextOp | undefined {
+  return parseOps(pdf).texts.find((t) => t.text === text);
+}
+
+// Design.md palette (mirrors the generator / tailwind.config.ts).
+const NAVY = "#0A1F44";
+const ROYAL = "#1E40AF";
+const WARNING = "#B45309";
+const SUCCESS = "#15803D";
+const DANGER = "#B91C1C";
+const BURGUNDY = "#6B1F2A";
+const MUTED = "#667085";
+const WHITE = "#FFFFFF";
+
 // ── sanitizePdfText ─────────────────────────────────────────────────────────
 
 describe("sanitizePdfText", () => {
@@ -291,5 +366,137 @@ describe("reviewPdfFilename", () => {
     expect(reviewPdfFilename(review({ review_id: "a/b c" }))).toContain(
       "adjury-review-a-b-c-",
     );
+  });
+});
+
+// ── Day 39 — PDF polish (Design.md palette, logo, layout) ───────────────────
+
+describe("reviewToPdf — Day 39 polish", () => {
+  it("draws the brand header band + vector wordmark and a footer page number", () => {
+    const pdf = reviewToPdf(review());
+    assertValidPdf(pdf);
+
+    // The logo wordmark (monogram + name) and the band subtitle.
+    expect(findText(pdf, "AdJury")).toBeDefined();
+    expect(findText(pdf, "AJ")).toBeDefined();
+    expect(findText(pdf, "Content review report")).toBeDefined();
+    // Wordmark text is white on the navy band.
+    expect(colorIs(findText(pdf, "AdJury")!.color, WHITE)).toBe(true);
+    // A navy band rectangle exists (full-width header).
+    expect(hasRectColor(pdf, NAVY)).toBe(true);
+
+    // Footer: product note + single-page page number.
+    expect(findText(pdf, "AdJury - AI content review")).toBeDefined();
+    expect(findText(pdf, "Page 1 of 1")).toBeDefined();
+  });
+
+  it("renders a colour-coded verdict pill and aggregate score chip", () => {
+    // revise → verdict tone warning; aggregate 7.2 → score tone royal.
+    const pdf = reviewToPdf(review({ verdict: "revise", aggregate_score: 7.2 }));
+
+    const verdict = findText(pdf, "Verdict: Revise");
+    expect(verdict).toBeDefined();
+    expect(colorIs(verdict!.color, WHITE)).toBe(true); // white text on the pill
+    expect(hasRectColor(pdf, WARNING)).toBe(true); // the warning-toned pill fill
+
+    const aggregate = findText(pdf, "Aggregate score: 7.2 / 10 (Strong)");
+    expect(aggregate).toBeDefined();
+    expect(colorIs(aggregate!.color, WHITE)).toBe(true);
+    expect(hasRectColor(pdf, ROYAL)).toBe(true); // 7–8 → royal chip
+  });
+
+  it("colour-codes a pass verdict + high aggregate in the success tone", () => {
+    const pdf = reviewToPdf(review({ verdict: "pass", aggregate_score: 9.4 }));
+    expect(findText(pdf, "Verdict: Pass")).toBeDefined();
+    expect(findText(pdf, "Aggregate score: 9.4 / 10 (Excellent)")).toBeDefined();
+    expect(hasRectColor(pdf, SUCCESS)).toBe(true);
+  });
+
+  it("tones an unscored verdict + aggregate neutral (no fabricated colour)", () => {
+    const pdf = reviewToPdf(review({ verdict: null, aggregate_score: null }));
+    const verdict = findText(pdf, "Verdict: Not scored");
+    expect(verdict).toBeDefined();
+    expect(colorIs(verdict!.color, WHITE)).toBe(true);
+    // The pill is the neutral/muted tone, never a success/pass colour.
+    expect(hasRectColor(pdf, MUTED)).toBe(true);
+    expect(hasRectColor(pdf, SUCCESS)).toBe(false);
+  });
+
+  it("applies the compliance-flag override to the juror score chip (Burgundy)", () => {
+    // A compliance juror that FLAGS issues reads Burgundy regardless of score
+    // (Design.md §2), not the warning-deep its 3/10 would otherwise map to.
+    const pdf = reviewToPdf(
+      review({
+        jurors: [
+          okJuror({
+            persona: "compliance_legal_flagger",
+            score: 3,
+            issues: [
+              {
+                severity: "high",
+                excerpt: "cures everything",
+                explanation: "Unsubstantiated medical claim.",
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+    const chip = findText(pdf, "Score: 3 / 10 (Weak)  -  High confidence");
+    expect(chip).toBeDefined();
+    expect(colorIs(chip!.color, WHITE)).toBe(true);
+    expect(hasRectColor(pdf, BURGUNDY)).toBe(true);
+  });
+
+  it("colours a partial-failure notice in the warning tone, not muted grey", () => {
+    const pdf = reviewToPdf(
+      review({
+        jurors: [
+          okJuror(),
+          { persona: "seo_discoverability", status: "error", error: "bad json" },
+        ],
+      }),
+    );
+    const note = parseOps(pdf).texts.find((t) => t.text.startsWith("Note:"));
+    expect(note).toBeDefined();
+    expect(colorIs(note!.color, WARNING)).toBe(true);
+  });
+
+  it("colours an all-errored notice in the danger tone", () => {
+    const pdf = reviewToPdf(
+      review({
+        jurors: [
+          { persona: "brand_voice_guardian", status: "error", error: "bad json" },
+        ],
+      }),
+    );
+    const note = parseOps(pdf).texts.find((t) => t.text.startsWith("Note:"));
+    expect(note).toBeDefined();
+    expect(colorIs(note!.color, DANGER)).toBe(true);
+  });
+
+  it("numbers pages 'X of N' and runs a slim header band on later pages", () => {
+    const longRewrite = "sentence ".repeat(200).trim();
+    const jurors: JurorSlot[] = [
+      okJuror({ persona: "brand_voice_guardian", suggested_rewrite: longRewrite }),
+      okJuror({ persona: "compliance_legal_flagger", suggested_rewrite: longRewrite }),
+      okJuror({ persona: "target_audience_fit", suggested_rewrite: longRewrite }),
+      okJuror({ persona: "seo_discoverability", suggested_rewrite: longRewrite }),
+      okJuror({ persona: "stop_scrolling", suggested_rewrite: longRewrite }),
+    ];
+    const pdf = reviewToPdf(review({ jurors, content_text: longRewrite }));
+    const pages = countPages(pdf);
+    expect(pages).toBeGreaterThan(1);
+    expect(findText(pdf, `Page 1 of ${pages}`)).toBeDefined();
+    expect(findText(pdf, `Page ${pages} of ${pages}`)).toBeDefined();
+    // The slim running header on later pages carries a right-aligned label.
+    expect(findText(pdf, "Review report")).toBeDefined();
+  });
+
+  it("keeps colour operators ASCII/single-byte", () => {
+    const pdf = reviewToPdf(review());
+    for (let i = 0; i < pdf.length; i += 1) {
+      expect(pdf.charCodeAt(i)).toBeLessThan(128);
+    }
   });
 });

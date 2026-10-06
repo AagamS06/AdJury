@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-10-05 (Day 38 — PDF: single review)
+> **Status:** Active · **Last updated:** 2026-10-06 (Day 39 — PDF polish)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -191,8 +191,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Server/client-rendered branded PDF of a review. **Completed 2026-10-05.**
 - DoD: valid PDF downloads.
 
-### Day 39 — PDF polish
-- [ ] Apply Design.md palette, logo, and layout to the PDF.
+### Day 39 — PDF polish ✅
+- [x] Apply Design.md palette, logo, and layout to the PDF. **Completed 2026-10-06.**
 - DoD: report reads as enterprise-credible.
 
 ### Day 40 — Export authz

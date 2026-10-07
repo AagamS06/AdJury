@@ -3,6 +3,10 @@ import { getSessionContext } from "@/lib/auth/session";
 import { createServerSupabase } from "@/lib/auth/supabase-server";
 import { listReviewsByCompany } from "@/lib/db/queries";
 import {
+  checkExportRateLimit,
+  exportRateLimitHeaders,
+} from "@/lib/reviews/export-access";
+import {
   historyCsvFilename,
   historyToCsv,
 } from "@/lib/reviews/history-csv-export";
@@ -33,8 +37,13 @@ import { UTF8_BOM } from "@/lib/reviews/csv";
  * what a filtered view over that set would show.
  *
  * Only CSV is available today; `format=pdf` is a later day and returns a clear
- * 400. Export-specific authz hardening and rate limiting are Day 40; the export
- * UI (buttons) is Day 41.
+ * 400. The export UI (buttons) is Day 41.
+ *
+ * Export authz hardening + rate limiting (DailyPlan Day 40): authenticated
+ * callers are additionally subject to a per-plan export rate limit (a cost/abuse
+ * guard — Rules.md §1) enforced before the read/serialize work; exceeding it
+ * returns 429 with the limit + reset info. An unauthenticated caller still falls
+ * through to the read core's 401. See `export-access.ts`.
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,6 +61,19 @@ export async function GET(request: Request): Promise<Response> {
 
   // Fail closed on any session-resolution failure (e.g. missing Supabase env).
   const session = await getSessionContext().catch(() => null);
+
+  // Day 40: per-plan export rate limit, enforced before the read/serialize work.
+  // Only meaningful for an authenticated caller — an anon request falls through
+  // to the read core's 401 below (no point consuming a company's slot for it).
+  if (session) {
+    const limited = checkExportRateLimit({ session });
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: limited.error, ...limited.rateLimit },
+        { status: 429, headers: exportRateLimitHeaders(limited.rateLimit) },
+      );
+    }
+  }
 
   const result = await listReviewsForCompany({
     session,

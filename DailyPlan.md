@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-10-06 (Day 39 — PDF polish)
+> **Status:** Active · **Last updated:** 2026-10-07 (Day 40 — Export authz)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -195,8 +195,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Apply Design.md palette, logo, and layout to the PDF. **Completed 2026-10-06.**
 - DoD: report reads as enterprise-credible.
 
-### Day 40 — Export authz
-- [ ] `/api/export` tenancy + auth checks; rate-limit exports.
+### Day 40 — Export authz ✅
+- [x] `/api/export` tenancy + auth checks; rate-limit exports. **Completed 2026-10-07.**
 - DoD: only owners can export their data.
 
 ### Day 41 — Export UI

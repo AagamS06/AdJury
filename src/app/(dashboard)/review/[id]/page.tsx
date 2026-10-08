@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ExportButtons } from "@/components/review/export-button";
 import { Scorecard } from "@/components/review/scorecard";
 import { requireSession } from "@/lib/auth/guard";
 import { getSessionContext } from "@/lib/auth/session";
 import { createServerSupabase } from "@/lib/auth/supabase-server";
 import { getReviewById } from "@/lib/db/queries";
+import { reviewExportHref } from "@/lib/reviews/export-ui";
 import { getReviewForCompany } from "@/lib/reviews/read-reviews";
 import { reviewDetailState } from "@/lib/reviews/review-detail-view";
 
@@ -55,7 +57,7 @@ export default async function ReviewDetailPage({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold text-ink">Review</h1>
           <p className="mt-2 max-w-2xl text-body">
@@ -63,12 +65,33 @@ export default async function ReviewDetailPage({
             results.
           </p>
         </div>
-        <Link
-          href="/history"
-          className="shrink-0 rounded-sm border border-navy px-4 py-2 text-sm font-semibold text-navy transition-colors hover:bg-navy hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-bright"
-        >
-          Back to history
-        </Link>
+        <div className="flex shrink-0 flex-col items-end gap-3">
+          <Link
+            href="/history"
+            className="rounded-sm border border-navy px-4 py-2 text-sm font-semibold text-navy transition-colors hover:bg-navy hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-bright"
+          >
+            Back to history
+          </Link>
+          {state.kind === "review" && (
+            <ExportButtons
+              groupLabel="Export this review"
+              targets={[
+                {
+                  href: reviewExportHref(id, "csv"),
+                  label: "Export CSV",
+                  format: "csv",
+                  fallbackFilename: `adjury-review-${id}.csv`,
+                },
+                {
+                  href: reviewExportHref(id, "pdf"),
+                  label: "Export PDF",
+                  format: "pdf",
+                  fallbackFilename: `adjury-review-${id}.pdf`,
+                },
+              ]}
+            />
+          )}
+        </div>
       </div>
 
       <div className="mt-8">

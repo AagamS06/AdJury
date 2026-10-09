@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { ExportButtons } from "@/components/review/export-button";
 import { HistoryList } from "@/components/review/history-list";
 import { requireSession } from "@/lib/auth/guard";
 import { getSessionContext } from "@/lib/auth/session";
 import { createServerSupabase } from "@/lib/auth/supabase-server";
 import { listReviewsByCompany } from "@/lib/db/queries";
+import { historyExportHref } from "@/lib/reviews/export-ui";
 import { listReviewsForCompany } from "@/lib/reviews/read-reviews";
 
 /**
@@ -19,7 +21,11 @@ import { listReviewsForCompany } from "@/lib/reviews/read-reviews";
  */
 export const dynamic = "force-dynamic";
 
-export default async function HistoryPage() {
+export default async function HistoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requireSession();
 
   // Re-resolve for the core (which owns the 401/500 mapping); the guard above
@@ -34,9 +40,14 @@ export default async function HistoryPage() {
     },
   });
 
+  // Forward any active history filters to the export so it matches the view
+  // (Day 37). No filter UI exists yet, so this is normally just format=csv.
+  const params = await searchParams;
+  const hasReviews = result.ok && result.reviews.length > 0;
+
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold text-ink">Review history</h1>
           <p className="mt-2 max-w-2xl text-body">
@@ -44,12 +55,27 @@ export default async function HistoryPage() {
             the full scorecard.
           </p>
         </div>
-        <Link
-          href="/review"
-          className="shrink-0 rounded-sm bg-royal px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-royal-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-bright"
-        >
-          New review
-        </Link>
+        <div className="flex shrink-0 flex-col items-end gap-3">
+          <Link
+            href="/review"
+            className="rounded-sm bg-royal px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-royal-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-bright"
+          >
+            New review
+          </Link>
+          {hasReviews && (
+            <ExportButtons
+              groupLabel="Export review history"
+              targets={[
+                {
+                  href: historyExportHref(params),
+                  label: "Export CSV",
+                  format: "csv",
+                  fallbackFilename: "adjury-review-history.csv",
+                },
+              ]}
+            />
+          )}
+        </div>
       </div>
 
       <div className="mt-8">

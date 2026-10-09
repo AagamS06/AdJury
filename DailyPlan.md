@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-10-07 (Day 40 — Export authz)
+> **Status:** Active · **Last updated:** 2026-10-08 (Day 41 — Export UI)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -199,8 +199,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] `/api/export` tenancy + auth checks; rate-limit exports. **Completed 2026-10-07.**
 - DoD: only owners can export their data.
 
-### Day 41 — Export UI
-- [ ] Export buttons + download UX on review/history pages.
+### Day 41 — Export UI ✅
+- [x] Export buttons + download UX on review/history pages. **Completed 2026-10-08.**
 - DoD: one-click export from the UI.
 
 ### Day 42 — Week 6 hardening

@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-10-09 (Day 42 — Week 6 hardening)
+> **Status:** Active · **Last updated:** 2026-10-10 (Day 43 — RLS audit)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -211,8 +211,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 
 ## Week 7 — Security & cost pass
 
-### Day 43 — RLS audit
-- [ ] Verify every tenant-table policy; add cross-tenant-isolation tests.
+### Day 43 — RLS audit ✅
+- [x] Verify every tenant-table policy; add cross-tenant-isolation tests. **Completed 2026-10-10.**
 - DoD: no cross-company access; tests prove it.
 
 ### Day 44 — Authz audit

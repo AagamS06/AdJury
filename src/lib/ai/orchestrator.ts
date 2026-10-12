@@ -59,13 +59,37 @@ export function buildUserPrompt(input: ReviewInput, persona: Persona): string {
       ]
     : [];
 
+  // Business context (DailyPlan Day 23a) grounds EVERY juror in which business
+  // the ad is for — its field and likely audience — so none judges the copy in a
+  // vacuum (PRD §4/§5). It is a small, bounded summary (resolved + cached
+  // server-side), so injecting it into all five stays within the cost budget.
+  const businessBlock = input.business_context
+    ? [`Business context (what this ad is for):\n${input.business_context}\n`]
+    : [];
+
+  // Multi-format input (Day 15a): tell the juror what it is reviewing. For an
+  // image ad the visual is attached as a separate vision block (see `runReview`),
+  // and the text between the markers is the ad's accompanying copy (caption /
+  // headline / CTA). For a text ad it is the ad copy itself.
+  const isImage = input.media_type === "image";
+  const formatBlock = isImage
+    ? [
+        "Ad format: IMAGE. The ad's image is attached to this message — review the visual together with its accompanying copy below (caption / headline / CTA).\n",
+      ]
+    : [];
+  const contentLabel = isImage
+    ? `Review the attached image ad and its copy between the delimiter lines below as the ${persona.title}.`
+    : `Review the content between the delimiter lines below as the ${persona.title}.`;
+
   return [
     `Content type: ${input.content_type}`,
     `Platform: ${input.platform ?? "unspecified"}`,
     "",
+    ...formatBlock,
+    ...businessBlock,
     ...brandBlock,
     ...platformBlock,
-    `Review the content between the delimiter lines below as the ${persona.title}.`,
+    contentLabel,
     CONTENT_MARKER,
     input.content_text,
     CONTENT_MARKER,
@@ -146,6 +170,10 @@ async function runPersona(
             system: persona.systemPrompt,
             user,
             persona: persona.name,
+            // Attach the ad image for an image ad (Day 15a); null for a text ad.
+            image: input.image
+              ? { dataUrl: input.image.data_url, mimeType: input.image.mime_type }
+              : null,
             temperature,
             signal,
           }),
@@ -210,6 +238,7 @@ export async function runReview(
   return {
     review_id: globalThis.crypto.randomUUID(),
     content_type: input.content_type,
+    media_type: input.media_type,
     platform: input.platform,
     model: client.isMock ? `${client.model} (mock)` : client.model,
     created_at: new Date().toISOString(),

@@ -8,7 +8,7 @@
 ## 1. Guiding Principles
 
 1. **Ship the QA layer, not a content generator.** Every feature keeps the human in control. We critique and suggest; we do not auto-publish.
-2. **Cost discipline is a feature.** One model, five prompts, caching, rate limits. Never fan out to multiple paid providers when one will do.
+2. **Cost discipline is a feature.** One model, six prompts (multimodal for image ads), caching, rate limits. Never fan out to multiple paid providers when one will do.
 3. **Enterprise-credible over cute.** UI, copy, and defaults should read as a tool a marketing director trusts. See [Design.md](Design.md).
 4. **Multi-tenant safety is non-negotiable.** No code path may leak one company's data to another.
 5. **Small, working increments.** Prefer a thin end-to-end slice over a broad half-built layer. Follow the phase order in [Phases.md](Phases.md).
@@ -41,7 +41,9 @@ Allowed when it removes real complexity **and** is actively maintained. Note *wh
 - **The AI critiques content; it does not make product decisions, run migrations, or touch billing.**
 - Each juror must return **only** JSON conforming to the schema in [PRD.md](PRD.md) §7. No prose outside the JSON.
 - Persona prompts live in `src/lib/ai/personas/*` — **one file per juror**. Prompt changes are code changes: reviewed, versioned, never edited live in prod.
-- **Never send secrets, other companies' data, or full raw style guides** into a prompt. Juror 1 uses the cached brand summary/embedding, not arbitrary uploads verbatim.
+- **Never send secrets, other companies' data, or full raw style guides** into a prompt. Juror 1 uses the cached brand summary/embedding, not arbitrary uploads verbatim; likewise the jurors are grounded in the **cached, bounded business-context summary**, not the raw web.
+- **Grounded, not invented.** The Business Analyst juror (and any business-context use) must rely only on the researched business context provided; it must never fabricate company facts (products, revenue, customers, strategy). An insider read is grounded, not hallucinated.
+- **Multi-format inputs.** A review is text or an image ad (video planned). Uploaded creatives are bounded/size-guarded before the fan-out; the image is sent to the model as a vision input, never trusted as executable content.
 - **Validate before trust.** Model output is untrusted input: parse, Zod-validate, retry once, then mark that juror `error`. A malformed juror must never crash a whole review or be stored unvalidated.
 - **Determinism where it matters.** Use low temperature for scoring; keep rubrics explicit so scores are reproducible and defensible.
 - **No PII harvesting.** Do not log full user content or model prompts/outputs in plaintext beyond what's needed for the review record. Redact where practical.

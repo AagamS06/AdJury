@@ -21,6 +21,10 @@ import {
   updateUserRole,
 } from "@/lib/db/queries";
 import { serverClient } from "@/lib/db/supabase";
+import {
+  computeBusinessContextCache,
+  normalizeWebsiteUrl,
+} from "./business-context";
 import { acceptInvitation } from "./accept-invitation";
 import { createInvitation } from "./create-invitation";
 import { saveBrandProfile } from "./save-brand-profile";
@@ -64,12 +68,30 @@ export async function completeOnboardingAction(
     name: field(formData, "name"),
     industry: field(formData, "industry"),
     plan_tier: field(formData, "plan_tier"),
+    website_url: field(formData, "website_url"),
   });
   if (!parsed.success) return { error: firstOnboardingIssue(parsed.error) };
 
+  // Business context (Day 23a): canonicalize the website and derive the cached
+  // business summary + key from the identity, once, here — so reviews reuse it
+  // instead of re-researching the business each time (Architecture.md §5).
+  const websiteUrl = normalizeWebsiteUrl(parsed.data.website_url);
+  const businessCache = computeBusinessContextCache({
+    name: parsed.data.name,
+    industry: parsed.data.industry,
+    websiteUrl,
+  });
+
   const admin = serverClient();
   try {
-    await completeCompanyOnboarding(admin, session.companyId, parsed.data);
+    await completeCompanyOnboarding(admin, session.companyId, {
+      name: parsed.data.name,
+      industry: parsed.data.industry,
+      plan_tier: parsed.data.plan_tier,
+      website_url: websiteUrl,
+      business_summary: businessCache.summary,
+      business_context_ref: businessCache.contextRef,
+    });
   } catch (err) {
     // Surface a plain message; keep internal detail in logs, no secrets/PII
     // (Rules.md §6).

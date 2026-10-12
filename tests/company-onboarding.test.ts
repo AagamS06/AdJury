@@ -194,6 +194,11 @@ describe("completeCompanyOnboarding", () => {
       name: "Acme Marketing",
       industry: "saas",
       plan_tier: "pro",
+      // Business-context columns (Day 23a) default to null when the caller omits
+      // them (no website provided), written on the same server-side update.
+      website_url: null,
+      business_summary: null,
+      business_context_ref: null,
       onboarded_at: "2026-09-18T12:00:00.000Z",
     });
     expect(result.onboarded_at).toBe("2026-09-18T12:00:00.000Z");

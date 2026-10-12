@@ -103,6 +103,12 @@ export interface CompleteOnboardingParams {
   name: string;
   industry: string;
   plan_tier: PlanTier;
+  /** Canonical website URL (Day 23a), or null when not provided. */
+  website_url?: string | null;
+  /** Cached business-context summary derived from the identity (Day 23a). */
+  business_summary?: string | null;
+  /** Content-addressed cache key for the business context (Day 23a). */
+  business_context_ref?: string | null;
 }
 
 /**
@@ -128,6 +134,13 @@ export async function completeCompanyOnboarding(
       name: params.name,
       industry: params.industry,
       plan_tier: params.plan_tier,
+      // Business context (Day 23a): the website plus the derived cache, written on
+      // the same server-side, tenant-scoped path as the rest of onboarding. The
+      // caller computes the cache from the identity so this helper stays a thin,
+      // already-validated write (mirrors the brand-voice cache write path).
+      website_url: params.website_url ?? null,
+      business_summary: params.business_summary ?? null,
+      business_context_ref: params.business_context_ref ?? null,
       onboarded_at: now.toISOString(),
     })
     .eq("id", companyId)
@@ -483,6 +496,8 @@ export async function insertReviewWithScores(
       submitted_by: params.submittedBy,
       content_text: params.content_text,
       content_type: review.content_type as ContentType,
+      // Ad format (Day 15a); defaults to 'text' for back-compat when absent.
+      media_type: review.media_type ?? "text",
       platform: review.platform,
       aggregate_score: review.aggregate_score,
       verdict: review.verdict,

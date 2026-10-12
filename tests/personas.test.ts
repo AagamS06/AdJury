@@ -20,7 +20,7 @@ import { PERSONA_NAMES } from "@/lib/schema/juror";
  */
 
 describe("PERSONAS wiring", () => {
-  it("defines exactly the five schema personas in canonical order", () => {
+  it("defines exactly the schema personas in canonical order (incl. the Business Analyst)", () => {
     expect(PERSONAS.map((p) => p.name)).toEqual([...PERSONA_NAMES]);
   });
 

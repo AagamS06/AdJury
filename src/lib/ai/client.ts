@@ -1,3 +1,4 @@
+import type AnthropicSdk from "@anthropic-ai/sdk";
 import type { PersonaName } from "@/lib/schema/juror";
 import { MAX_OUTPUT_TOKENS_PER_JUROR } from "./cost";
 
@@ -11,11 +12,25 @@ import { MAX_OUTPUT_TOKENS_PER_JUROR } from "./cost";
  * through the same parse + Zod-validate path as a live model.
  */
 
+/** An image ad's visual, passed to the model as a vision input (Day 15a). */
+export interface CompleteImage {
+  /** A `data:` URL (base64) or an `https:` URL. */
+  dataUrl: string;
+  /** e.g. `image/png`, `image/jpeg`. */
+  mimeType: string;
+}
+
 export interface CompleteArgs {
   system: string;
   user: string;
   /** Persona hint — used only by the mock to shape plausible output. */
   persona: PersonaName;
+  /**
+   * The ad image for an image ad (Day 15a). When present it is sent to the model
+   * as a vision input alongside the text prompt, so each juror reviews the visual
+   * together with its copy. Omitted/null for a text ad.
+   */
+  image?: CompleteImage | null;
   temperature?: number;
   /**
    * Abort signal for provider resilience (DailyPlan Day 19). The orchestrator's
@@ -60,6 +75,12 @@ class AnthropicClient implements ModelClient {
     // Lazy import so the mock path needs no SDK/network.
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const client = new Anthropic({ apiKey: this.apiKey });
+    // Build the user turn. For an image ad (Day 15a) prepend a vision block so the
+    // model reviews the visual alongside its copy; Claude is natively multimodal,
+    // so this needs no extra provider.
+    const content = args.image
+      ? [imageContentBlock(args.image), { type: "text" as const, text: args.user }]
+      : args.user;
     const res = await client.messages.create(
       {
         model: this.model,
@@ -67,7 +88,7 @@ class AnthropicClient implements ModelClient {
         max_tokens: MAX_OUTPUT_TOKENS_PER_JUROR,
         temperature: args.temperature ?? 0.2,
         system: args.system,
-        messages: [{ role: "user", content: args.user }],
+        messages: [{ role: "user", content }],
       },
       // Thread the orchestrator's timeout abort signal into the request so a
       // hung call is genuinely cancelled (DailyPlan Day 19).
@@ -76,6 +97,40 @@ class AnthropicClient implements ModelClient {
     const block = res.content.find((b) => b.type === "text");
     return block && "text" in block ? block.text : "";
   }
+}
+
+/**
+ * Build an Anthropic vision content block from an image ad's visual (Day 15a).
+ * A `data:` URL is sent as a base64 source (the upload path); any other URL is
+ * sent as a URL source. The SDK's base64 `media_type` is a fixed union, so the
+ * caller-supplied MIME is narrowed to it (the schema already restricts the MIME
+ * to PNG/JPEG/WebP/GIF, all of which are valid values).
+ */
+type ImageBlockParam = AnthropicSdk.ImageBlockParam;
+type Base64Source = Extract<ImageBlockParam["source"], { type: "base64" }>;
+
+/**
+ * The configured SDK sends images as a base64 source, which matches the upload
+ * flow (the submission form turns an uploaded file into a `data:` URL). A bare
+ * `https:` image URL would need the SDK's URL-source variant (not in this SDK
+ * version) or a server-side fetch-and-encode; rather than silently mis-send, we
+ * reject it with a clear message so the caller uploads the file instead.
+ */
+function imageContentBlock(image: CompleteImage): ImageBlockParam {
+  const dataUrlMatch = /^data:[^;,]+(;base64),(.*)$/s.exec(image.dataUrl);
+  if (!dataUrlMatch) {
+    throw new Error(
+      "Image ads must be uploaded (a base64 data URL); a remote image URL is not supported.",
+    );
+  }
+  return {
+    type: "image",
+    source: {
+      type: "base64",
+      media_type: image.mimeType as Base64Source["media_type"],
+      data: dataUrlMatch[2],
+    },
+  };
 }
 
 /**

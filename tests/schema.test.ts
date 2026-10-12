@@ -181,6 +181,7 @@ describe("scoring & verdict", () => {
       target_audience_fit: 0.25,
       seo_discoverability: 0.25,
       stop_scrolling: 0.25,
+      business_analyst: 0.25,
     };
     const jurors: JurorSlot[] = [
       ok("brand_voice_guardian", 10),

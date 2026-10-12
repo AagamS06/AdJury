@@ -38,6 +38,7 @@ export const PersonaWeightsInputSchema = z
     target_audience_fit: WeightValueSchema,
     seo_discoverability: WeightValueSchema,
     stop_scrolling: WeightValueSchema,
+    business_analyst: WeightValueSchema,
   })
   .partial()
   .strict()

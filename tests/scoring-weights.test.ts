@@ -59,6 +59,7 @@ describe("computeAggregate weighting", () => {
       target_audience_fit: 0.1,
       seo_discoverability: 0.1,
       stop_scrolling: 0.1,
+      business_analyst: 0.1, // unused: JURORS has no business_analyst slot
     };
     // 10*0.6 + (8+6+4+2)*0.1 = 6.0 + 2.0 = 8.0; total weight 1.0
     expect(computeAggregate(JURORS, weights)).toBe(8);
@@ -71,6 +72,7 @@ describe("computeAggregate weighting", () => {
       target_audience_fit: 5,
       seo_discoverability: 5,
       stop_scrolling: 5,
+      business_analyst: 5,
     };
     expect(computeAggregate(JURORS, equalButLarge)).toBe(6);
   });
@@ -89,6 +91,7 @@ describe("computeAggregate weighting", () => {
       target_audience_fit: 0.1,
       seo_discoverability: 0.1,
       stop_scrolling: 0.1,
+      business_analyst: 0.1, // unused: no business_analyst slot in this fixture
     };
     // (10*0.7 + 6*0.1 + 4*0.1 + 2*0.1) / (0.7 + 0.1 + 0.1 + 0.1)
     //   = (7 + 1.2) / 1.0 = 8.2
@@ -102,6 +105,7 @@ describe("computeAggregate weighting", () => {
       target_audience_fit: 0,
       seo_discoverability: 0,
       stop_scrolling: 1, // the only weighted juror errored below
+      business_analyst: 0,
     };
     const jurors: JurorSlot[] = [
       ok("brand_voice_guardian", 10),
@@ -130,6 +134,7 @@ describe("resolveWeights", () => {
       target_audience_fit: 0.2,
       seo_discoverability: 0.2,
       stop_scrolling: 0.2,
+      business_analyst: 0.2,
     });
   });
 
@@ -157,6 +162,7 @@ describe("resolveWeights", () => {
       target_audience_fit: 0,
       seo_discoverability: 0,
       stop_scrolling: 0,
+      business_analyst: 0,
     };
     expect(resolveWeights(allZero)).toEqual(DEFAULT_PERSONA_WEIGHTS);
   });
@@ -234,6 +240,8 @@ const FIXED_SCORES: Record<PersonaName, number> = {
   target_audience_fit: 6,
   seo_discoverability: 4,
   stop_scrolling: 2,
+  // Mid-band so the six-juror equal-weight mean stays 6.0 ((10+8+6+4+2+6)/6).
+  business_analyst: 6,
 };
 
 function sessionWithWeights(
@@ -308,14 +316,17 @@ describe("createReview honors the company's configured weights", () => {
         target_audience_fit: 0.1,
         seo_discoverability: 0.1,
         stop_scrolling: 0.1,
+        // business_analyst unspecified → resolves to the default 0.2 weight.
       }),
       persist: noopPersist,
       client: fixedScoreClient(FIXED_SCORES),
     });
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error("expected ok");
-    // 10*0.6 + (8+6+4+2)*0.1 = 8.0
-    expect(result.review.aggregate_score).toBe(8);
+    // Brand weighted heavily, and the Business Analyst (score 6) joins at the
+    // default 0.2 weight: (10*0.6 + (8+6+4+2)*0.1 + 6*0.2) / (1.0 + 0.2)
+    //   = (6 + 2.0 + 1.2) / 1.2 = 9.2 / 1.2 = 7.6̅ → 7.7
+    expect(result.review.aggregate_score).toBe(7.7);
   });
 });
 

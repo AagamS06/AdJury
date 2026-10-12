@@ -17,7 +17,7 @@ Chosen for a **solo developer** who wants one cohesive, well-documented stack wi
 | **DB** | **Postgres via Supabase** | Managed Postgres + Auth + Row-Level Security in one place. |
 | **Auth** | **Supabase Auth** | Email/password + roles; integrates with RLS for multi-tenancy. |
 | **ORM / DB access** | **Supabase JS client** + SQL migrations (optionally **Drizzle** later) | Keep it simple first; add a typed ORM only if the query layer grows. |
-| **AI** | **One cost-efficient model** — default **Claude Haiku 4.5**; provider-abstracted (see [Rules.md](Rules.md)) | Single model, five system prompts. Swappable behind an interface. |
+| **AI** | **One cost-efficient model** — default **Claude Haiku 4.5**; provider-abstracted (see [Rules.md](Rules.md)) | Single model, six system prompts (multimodal for image ads). Swappable behind an interface. |
 | **Validation** | **Zod** | Validates the juror JSON contract and all API inputs. |
 | **Exports** | PDF (`@react-pdf/renderer` or server print) + CSV (hand-rolled) | Enterprise reporting requirement. |
 | **Deploy** | **Vercel** (app) + **Supabase** (DB/auth) | Zero-ops hosting that matches the stack. |
@@ -55,7 +55,7 @@ Chosen for a **solo developer** who wants one cohesive, well-documented stack wi
 1. **Auth check** — Supabase session; resolve `company_id` and `role`; enforce plan rate limit.
 2. **Load brand context** — fetch `brand_profiles` row for the company; reuse cached embedding rather than reprocessing the style guide.
 3. **Prompt assembly** — inject content + brand context into each of the 5 persona system prompts.
-4. **Fan-out** — call the model 5× (in parallel) via the AI orchestrator. Single provider, five prompts.
+4. **Fan-out** — call the model 6× (in parallel) via the AI orchestrator. Single provider, six prompts. For an image ad the creative is attached to each call as a vision block.
 5. **Validate** — each response is parsed and validated against the juror JSON schema (Zod). One retry on failure; otherwise mark that juror `error` and continue.
 6. **Aggregate** — compute weighted mean + verdict (compliance can veto → `fail`).
 7. **Persist** — write one `reviews` row + five `persona_scores` rows.
@@ -81,6 +81,9 @@ id            uuid pk
 name          text not null
 industry      text
 plan_tier     text not null default 'free'   -- free | pro | enterprise
+website_url   text                            -- public site (business research, Day 23a)
+business_summary      text                    -- cached researched business context
+business_context_ref  text                    -- content-addressed cache key
 created_at    timestamptz default now()
 
 -- users  (mirrors Supabase auth.users via id)
@@ -101,8 +104,9 @@ updated_at    timestamptz default now()
 id            uuid pk
 company_id    uuid not null references companies(id)
 submitted_by  uuid not null references users(id)
-content_text  text not null
+content_text  text not null                   -- the copy; for an image ad, its caption/headline/CTA
 content_type  text not null                   -- ad_copy | social_post | email | landing_page
+media_type    text not null default 'text'    -- text | image (video planned) — Day 15a
 platform      text
 aggregate_score numeric(3,1)
 verdict       text                            -- pass | revise | fail
@@ -200,7 +204,9 @@ AdJury/
 
 ## 5. AI Orchestration Detail
 
-- **Single provider, five prompts.** `lib/ai/personas/*` each export `{ name, systemPrompt, rubric }`. The orchestrator maps over them, calling the same model client.
+- **Single provider, six prompts.** `lib/ai/personas/*` each export `{ name, systemPrompt, rubric }` — the five craft jurors plus the Business Analyst (an insider business/market read grounded in researched business context). The orchestrator maps over them, calling the same model client.
+- **Multi-format input.** A review is text or an image ad (video planned). For an image ad the orchestrator attaches the creative as a vision block to each juror's call (Claude is natively multimodal — no extra provider); the accompanying copy is reviewed alongside it.
+- **Business context.** The company's website/identity is researched once from public sources, condensed to a bounded summary, cached on the company row, and injected into every juror so the critique is grounded in the right business.
 - **Structured output.** Prompts instruct the model to return only JSON matching the juror schema; responses are parsed and Zod-validated. One retry with a "return valid JSON only" nudge before marking the juror `error`.
 - **Brand-voice caching.** Juror 1 needs the style guide. Its embedding/summary is computed once per `brand_profiles` update and reused (keyed by `embedding_ref`) instead of re-reading the full guide every review.
 - **Cost control.** Small model + short structured prompts; parallel calls; per-plan rate limits in `lib/rate-limit.ts`; token budget guardrails.

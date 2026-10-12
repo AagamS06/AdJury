@@ -3,7 +3,9 @@
 import { useId, useState } from "react";
 import {
   CONTENT_TYPE_OPTIONS,
+  IMAGE_ACCEPT,
   MAX_CONTENT_LENGTH,
+  MEDIA_TYPE_OPTIONS,
   PLATFORM_OPTIONS,
   submitReview,
   validateReviewForm,
@@ -12,6 +14,19 @@ import {
 } from "@/lib/reviews/review-form";
 import type { ReviewResult } from "@/lib/schema/juror";
 import { Scorecard } from "@/components/review/scorecard";
+
+/** Read an uploaded image file into a base64 `data:` URL + its MIME type. */
+function readImageFile(
+  file: File,
+): Promise<{ data_url: string; mime_type: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      resolve({ data_url: String(reader.result), mime_type: file.type });
+    reader.onerror = () => reject(reader.error ?? new Error("Could not read file."));
+    reader.readAsDataURL(file);
+  });
+}
 
 /**
  * Content submission form (DailyPlan Day 8): content textarea + content-type and
@@ -32,6 +47,8 @@ const EMPTY_FIELDS: ReviewFormFields = {
   content_text: "",
   content_type: "",
   platform: "",
+  media_type: "text",
+  image: null,
 };
 
 export function ReviewForm() {
@@ -43,6 +60,7 @@ export function ReviewForm() {
   const [fieldErrors, setFieldErrors] = useState<ReviewFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [imageName, setImageName] = useState<string | null>(null);
   const [result, setResult] = useState<ReviewResult | null>(null);
   // The content that produced `result`, captured for the before/after rewrite
   // diff (DailyPlan Day 15) — the API response doesn't echo the content back.
@@ -84,6 +102,32 @@ export function ReviewForm() {
     }
   }
 
+  function onMediaTypeChange(value: string) {
+    // Switching format clears any attached image (text ads must not carry one).
+    setImageName(null);
+    setFields((prev) => ({ ...prev, media_type: value, image: null }));
+    setFieldErrors((prev) => ({ ...prev, image: undefined, media_type: undefined }));
+  }
+
+  async function onImageChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setImageName(null);
+      update("image", null);
+      return;
+    }
+    try {
+      const image = await readImageFile(file);
+      setImageName(file.name);
+      update("image", image);
+    } catch {
+      setImageName(null);
+      update("image", null);
+      setFieldErrors((prev) => ({ ...prev, image: "Could not read that file. Please try another image." }));
+    }
+  }
+
+  const isImage = fields.media_type === "image";
   const remaining = MAX_CONTENT_LENGTH - fields.content_text.length;
 
   return (
@@ -93,23 +137,93 @@ export function ReviewForm() {
         noValidate
         className="max-w-3xl rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]"
       >
+        {/* Ad format (Day 15a) */}
+        <fieldset className="mb-4">
+          <legend className="mb-1 block text-sm font-medium text-body">
+            Ad format
+          </legend>
+          <div className="flex flex-wrap gap-2">
+            {MEDIA_TYPE_OPTIONS.map((opt) => (
+              <label
+                key={opt.value}
+                className={`flex cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 text-sm ${
+                  fields.media_type === opt.value
+                    ? "border-royal bg-canvas font-semibold text-navy"
+                    : "border-border text-body"
+                } ${opt.comingSoon ? "cursor-not-allowed opacity-50" : "hover:bg-canvas"} focus-within:ring-2 focus-within:ring-royal-bright`}
+              >
+                <input
+                  type="radio"
+                  name="media_type"
+                  value={opt.value}
+                  checked={fields.media_type === opt.value}
+                  disabled={opt.comingSoon}
+                  onChange={(e) => onMediaTypeChange(e.target.value)}
+                  className="h-4 w-4 accent-royal focus-visible:outline-none"
+                />
+                {opt.label}
+                {opt.comingSoon && (
+                  <span className="text-xs font-normal text-muted">(soon)</span>
+                )}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        {/* Image upload (image ads only) */}
+        {isImage && (
+          <div className="mb-4">
+            <label
+              htmlFor={fieldId("image")}
+              className="mb-1 block text-sm font-medium text-body"
+            >
+              Ad image
+            </label>
+            <input
+              id={fieldId("image")}
+              name="image"
+              type="file"
+              accept={IMAGE_ACCEPT}
+              onChange={onImageChange}
+              aria-invalid={fieldErrors.image ? true : undefined}
+              aria-describedby={fieldErrors.image ? errorId("image") : `${baseId}-image-hint`}
+              className="block w-full text-sm text-body file:mr-3 file:rounded-sm file:border-0 file:bg-royal file:px-3 file:py-2 file:font-semibold file:text-white hover:file:bg-royal-bright"
+            />
+            {fieldErrors.image ? (
+              <p id={errorId("image")} role="alert" className="mt-1 text-sm font-medium text-danger">
+                {fieldErrors.image}
+              </p>
+            ) : (
+              <p id={`${baseId}-image-hint`} className="mt-1 text-sm text-muted">
+                {imageName
+                  ? `Selected: ${imageName}`
+                  : "PNG, JPEG, WebP, or GIF — up to ~5 MB. The jurors review the image together with your caption below."}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Content */}
         <div className="mb-4">
           <label
             htmlFor={fieldId("content_text")}
             className="mb-1 block text-sm font-medium text-body"
           >
-            Content to review
+            {isImage ? "Caption / headline / CTA" : "Content to review"}
           </label>
           <textarea
             id={fieldId("content_text")}
             name="content_text"
             required
-            rows={10}
+            rows={isImage ? 4 : 10}
             maxLength={MAX_CONTENT_LENGTH}
             value={fields.content_text}
             onChange={(e) => update("content_text", e.target.value)}
-            placeholder="Paste the ad copy, social post, email, or landing-page text you want the jurors to review…"
+            placeholder={
+              isImage
+                ? "The copy that runs with this image — caption, headline, or call to action…"
+                : "Paste the ad copy, social post, email, or landing-page text you want the jurors to review…"
+            }
             aria-invalid={fieldErrors.content_text ? true : undefined}
             aria-describedby={
               fieldErrors.content_text

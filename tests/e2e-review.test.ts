@@ -22,8 +22,9 @@ describe("end-to-end review (mock model)", () => {
     // The composed review conforms to the contract end-to-end.
     expect(() => ReviewResultSchema.parse(review)).not.toThrow();
 
-    // Exactly the five canonical jurors, in order.
-    expect(review.jurors).toHaveLength(5);
+    // Exactly the canonical jurors, in order (five craft jurors + the Business
+    // Analyst, Day 23b).
+    expect(review.jurors).toHaveLength(PERSONA_NAMES.length);
     expect(review.jurors.map((j) => j.persona)).toEqual([...PERSONA_NAMES]);
 
     // Aggregate and verdict are well-formed.

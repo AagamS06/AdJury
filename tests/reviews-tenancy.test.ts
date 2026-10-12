@@ -242,6 +242,7 @@ function reviewResult(): ReviewResult {
   return {
     review_id: REVIEW_ID,
     content_type: "ad_copy",
+    media_type: "text",
     platform: "instagram",
     model: "mock",
     created_at: "2026-09-01T00:00:00.000Z",

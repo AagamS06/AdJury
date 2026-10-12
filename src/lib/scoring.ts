@@ -2,13 +2,20 @@ import type { JurorSlot, Verdict } from "@/lib/schema/juror";
 import { PERSONA_NAMES } from "@/lib/schema/juror";
 import type { PersonaWeights, PersonaWeightsConfig } from "@/lib/schema/weights";
 
-/** Default equal weights (PRD.md §5.2): every juror counts the same (0.2). */
+/**
+ * Default equal weights (PRD.md §5.2): every juror counts the same. The value is
+ * 0.2 per juror for historical continuity; `computeAggregate` normalizes by the
+ * total weight of the scoring jurors, so equal values give equal weighting
+ * regardless of how many jurors there are (the sixth juror, the Business Analyst
+ * — Day 23b — simply joins at the same 0.2).
+ */
 export const DEFAULT_PERSONA_WEIGHTS: PersonaWeights = {
   brand_voice_guardian: 0.2,
   compliance_legal_flagger: 0.2,
   target_audience_fit: 0.2,
   seo_discoverability: 0.2,
   stop_scrolling: 0.2,
+  business_analyst: 0.2,
 };
 
 /**

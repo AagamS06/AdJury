@@ -16,6 +16,7 @@ import {
   ReviewRequestSchema,
   ReviewResultSchema,
   type PersonaName,
+  type ReviewImage,
   type ReviewRequest,
   type ReviewResult,
 } from "@/lib/schema/juror";
@@ -26,6 +27,23 @@ import {
  * so the counter, client validation, and the server cap never drift apart.
  */
 export const MAX_CONTENT_LENGTH = MAX_CONTENT_CHARS;
+
+/**
+ * Ad-format options for the submission form (DailyPlan Day 15a). `text` and
+ * `image` ship today; short- and long-form video are on the roadmap (they need a
+ * transcription + frame-sampling pipeline) and are shown as `comingSoon` so the
+ * UI can offer-but-disable them — advertisers see where AdJury is heading without
+ * being able to submit a format the engine can't yet review.
+ */
+export const MEDIA_TYPE_OPTIONS = [
+  { value: "text", label: "Text", comingSoon: false },
+  { value: "image", label: "Image", comingSoon: false },
+  { value: "video_short", label: "Video — short-form", comingSoon: true },
+  { value: "video_long", label: "Video — long-form", comingSoon: true },
+] as const;
+
+/** Accepted file input `accept` attribute for image uploads. */
+export const IMAGE_ACCEPT = "image/png,image/jpeg,image/webp,image/gif";
 
 /** Content-type select options — labels for the four schema enum values. */
 export const CONTENT_TYPE_OPTIONS = [
@@ -60,6 +78,7 @@ export const PERSONA_LABELS: Record<PersonaName, string> = {
   target_audience_fit: "Target Audience Fit",
   seo_discoverability: "SEO / Discoverability",
   stop_scrolling: "Would I Stop Scrolling",
+  business_analyst: "Business Analyst (Insider)",
 };
 
 /** The raw string values the form holds (a select's value is always a string). */
@@ -68,6 +87,13 @@ export interface ReviewFormFields {
   content_type: string;
   /** "" means "not specified" and maps to `null`. */
   platform: string;
+  /** Ad format (Day 15a): "text" or "image". */
+  media_type: string;
+  /**
+   * The uploaded image for an image ad (Day 15a), already read into a `data:` URL
+   * + MIME by the component; null for a text ad.
+   */
+  image: ReviewImage | null;
 }
 
 export type ReviewFieldErrors = Partial<
@@ -86,10 +112,15 @@ export type ReviewFormValidation =
 export function validateReviewForm(
   fields: ReviewFormFields,
 ): ReviewFormValidation {
+  const mediaType = fields.media_type === "" ? "text" : fields.media_type;
   const candidate = {
     content_text: fields.content_text.trim(),
     content_type: fields.content_type,
     platform: fields.platform.trim() === "" ? null : fields.platform.trim(),
+    media_type: mediaType,
+    // Only attach an image for an image ad — the schema rejects a text ad that
+    // carries one, so clear it when the user switches back to text.
+    image: mediaType === "image" ? fields.image : null,
   };
 
   const parsed = ReviewRequestSchema.safeParse(candidate);
@@ -103,7 +134,13 @@ export function validateReviewForm(
     if (typeof key !== "string" || key in fieldErrors) continue;
     if (key === "content_type") {
       fieldErrors.content_type = "Choose a content type.";
-    } else if (key === "content_text" || key === "platform") {
+    } else if (key === "image") {
+      fieldErrors.image = issue.message;
+    } else if (
+      key === "content_text" ||
+      key === "platform" ||
+      key === "media_type"
+    ) {
       fieldErrors[key] = issue.message;
     }
   }

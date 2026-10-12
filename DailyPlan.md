@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-10-11 (Day 44 — Authz audit)
+> **Status:** Active · **Last updated:** 2026-10-12 (merged goals: image ads, business context, Business Analyst juror; future: video, billing, generation, prod infra)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -87,6 +87,11 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Copy-to-clipboard + before/after highlight of rewrite vs original. **Completed 2026-09-11.**
 - DoD: users can copy a rewrite; diff is legible.
 
+### Day 15a — Multi-format input: image ads ✅ (merged goal)
+> Merged into the plan at its original-goal position (core engine, Week 3) and implemented ahead of the current day, per the "reach the widest set of advertisers" goal. Text + image ship now; short- and long-form **video** are a later phase (see Week 13+ / PRD §6.3).
+- [x] Review image ads as well as text: `media_type` (text|image) + optional image on the review contract; the creative is sent to each juror as a vision input (Claude multimodal); image size guard; `reviews.media_type` column; submission-form format toggle + image upload. **Completed 2026-10-12.**
+- DoD: an image ad runs through all jurors and returns a valid review; text ads unchanged.
+
 ### Day 16 — Configurable weighting ✅
 - [x] Scaffold per-company juror weights (default equal); scoring reads weights. **Completed 2026-09-12.**
 - DoD: aggregate honors custom weights; default unchanged; tests updated.
@@ -122,6 +127,16 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 ### Day 23 — Team management UI ✅
 - [x] Admin view: list team members and roles. **Completed 2026-09-19.**
 - DoD: admins see their company's members (tenant-safe).
+
+### Day 23a — Business context research ✅ (merged goal)
+> Merged at its original-goal position (business/brand context, Week 4) and implemented ahead of the current day. Grounds reviews in the posting company so jurors know which business/field the ad is for (PRD §4/§5).
+- [x] Capture the company's website at onboarding; research the business from public sources; condense to a bounded, cached `business_summary` + `business_context_ref` on the company row (mirrors the brand-voice cache — compute once, reuse per review); inject the context into every juror. Offline-deterministic researcher today; live web-search enrichment is a documented credential-gated seam. **Completed 2026-10-12.**
+- DoD: reviews are grounded in the company's field/market; cost per review is independent of the site's size.
+
+### Day 23b — Business Analyst juror ✅ (merged goal)
+> Merged at its original-goal position (the persona set, extended) and implemented ahead of the current day. A sixth "insider" juror, per the request for a secondary in-house opinion.
+- [x] Add a sixth juror — a Business Analyst briefed on the spot to stand in for the posting company, judging business/market fit. Grounded ONLY in the researched business context; forbidden from inventing company facts. Wires `PERSONA_NAMES`, scoring default weight, weights schema, the `persona_scores` CHECK constraint, and the UI label. **Completed 2026-10-12.**
+- DoD: a `business_analyst` score appears in every review and counts in the aggregate; tests prove grounding + participation.
 
 ### Day 24 — Invitations ✅
 - [x] Invite-by-email token flow → join existing company (email send may be stubbed/logged). **Completed 2026-09-20.**
@@ -339,8 +354,10 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 
 ## Week 11 — Billing scaffold
 
+> **Monetization target (to finalise here):** entry plan **AUD $20/month**, with a public free trial and **cancel anytime**. Trial shape is still being decided — either a general **3-month** promo trial (easy to advertise) or a **1-month** trial limited to **one account per business, one-time only**. Build the trial as a Stripe trial period so the choice is a config value, and keep the per-plan rate limits on the trial tier so a long free window can't run up model cost.
+
 ### Day 71 — Stripe scaffold
-- [ ] Stripe (test mode): products/prices config + customer model.
+- [ ] Stripe (test mode): products/prices config + customer model. Model the AUD $20/mo price + a configurable trial period (see the monetization note above).
 - DoD: test-mode Stripe wired; no live charges.
 
 ### Day 72 — Tier mapping
@@ -371,9 +388,11 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 
 ## Week 12 — Deploy & launch prep
 
+> **Production data & hosting (monetization-grade):** this is a paid product, so stand up a **secure managed Postgres (Supabase prod)** with RLS verified against the real DB (apply all migrations incl. 0006 RLS fix), and an **object-storage bucket** (Supabase Storage, tenant-scoped) for uploaded **image/video creatives** — image ads currently pass the creative inline per request; durable storage is the production upgrade. Deploy progression: **Vercel (test) → custom domain → prod**. Secrets live only in the Vercel/Supabase dashboards (Rules.md §4).
+
 ### Day 78 — Prod config
-- [ ] Vercel + Supabase prod env wiring (secrets in dashboards, not repo).
-- DoD: prod config documented and ready.
+- [ ] Vercel + Supabase prod env wiring (secrets in dashboards, not repo). Provision the prod Postgres + a media-storage bucket (see the note above); apply all migrations.
+- DoD: prod config documented and ready; RLS verified against the live DB.
 
 ### Day 79 — Deploy
 - [ ] Deploy to Vercel; smoke-test production.
@@ -404,6 +423,13 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 ## Week 13 — Buffer (optional, Days 85–91)
 
 Reserved for overflow, bug-fixing, real-user feedback iteration, and any day above that slipped. Add explicit `- [ ]` day entries here if the routine reaches this point.
+
+### Merged-in future goals (post-v1 formats & modes)
+> Captured from product direction and slotted here because their original-goal position is **after** the current build point. Promote to numbered days when the routine reaches them.
+- [ ] **Short-form video ads** — a media pipeline: transcribe audio + sample keyframes (as images) + read on-image text, then run the existing jurors. Extends `media_type` to `video_short`.
+- [ ] **Long-form video ads** — the same pipeline at scale; needs a cost/latency strategy (sampling, chunking) because it breaks the <$0.01/review and <15s targets if done naively. Extends `media_type` to `video_long`.
+- [ ] **Draft Assistant (ad generation)** — an optional, clearly-separate mode that drafts ad copy on request, distinct from the jury so AdJury never grades its own output (PRD §3/§6.3). The "improve my ad" rewrite path already ships via each juror's `suggested_rewrite`; this is net-new *generation*, a deliberate addition, not a pivot away from the QA-layer identity.
+- [ ] **Live business research** — swap the offline business-context researcher for a web-search-backed one (Claude web_search over the company's site), behind the existing `BusinessResearcher` seam. Needs a live model key + outbound network.
 
 - [ ] Day 85 — Buffer / overflow
 - [ ] Day 86 — Buffer / overflow

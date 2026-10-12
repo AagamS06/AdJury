@@ -4,7 +4,13 @@
  * if the migration changes, update these together. When the query layer grows
  * we can swap these for Supabase-generated types without touching call sites.
  */
-import type { Confidence, Issue, PersonaName, Verdict } from "@/lib/schema/juror";
+import type {
+  Confidence,
+  Issue,
+  MediaType,
+  PersonaName,
+  Verdict,
+} from "@/lib/schema/juror";
 import type { PersonaWeightsConfig } from "@/lib/schema/weights";
 
 export type PlanTier = "free" | "pro" | "enterprise";
@@ -24,6 +30,18 @@ export interface CompanyRow {
   juror_weights: PersonaWeightsConfig | null;
   /** When the first admin completed onboarding (Day 22); null = not yet onboarded. */
   onboarded_at: string | null;
+  /**
+   * Business context (Day 23a). Optional because they were added after the
+   * initial schema (migration 0007): rows created before it, and the many
+   * existing test fixtures, legitimately omit them, and every reader treats a
+   * missing value as "not set" (null). New DB reads always carry them.
+   */
+  /** The company's public website; null/absent = not provided. */
+  website_url?: string | null;
+  /** Cached bounded business-context summary; null/absent = no cache yet. */
+  business_summary?: string | null;
+  /** Content-addressed cache key for the business context; null/absent = no cache. */
+  business_context_ref?: string | null;
   created_at: string;
 }
 
@@ -67,6 +85,12 @@ export interface ReviewRow {
   submitted_by: string;
   content_text: string;
   content_type: ContentType;
+  /**
+   * Ad format (Day 15a); `text` or `image`. Optional because it was added after
+   * the initial schema (migration 0008) with a `'text'` default: existing rows
+   * and test fixtures read as `text` when absent, and new DB reads always carry it.
+   */
+  media_type?: MediaType;
   platform: string | null;
   aggregate_score: number | null;
   verdict: Verdict | null;

@@ -31,6 +31,41 @@ export const MAX_CONTENT_CHARS = 10_000;
 export const MAX_OUTPUT_TOKENS_PER_JUROR = 1_024;
 
 /**
+ * Max characters of an image ad's `data_url` (Day 15a). A data URL is ~1.37× the
+ * raw bytes (base64), so ~7M chars ≈ a ~5 MB image — generous for a static ad
+ * creative while keeping a single request (and the per-juror vision cost, since
+ * the image is sent to every juror) bounded (Rules.md §1 cost discipline). An
+ * `https:` image URL is far shorter and comfortably under this too.
+ */
+export const MAX_IMAGE_DATA_URL_CHARS = 7_000_000;
+
+/** Result of the image SIZE guard (Day 15a). */
+export type ImageSizeDecision =
+  | { ok: true; chars: number }
+  | { ok: false; code: "too_large"; message: string; limit: number; actual: number };
+
+/**
+ * Enforce the image payload size limit before the fan-out (Rules.md §6 — reject
+ * oversized input at the boundary with a specific message; §1 cost discipline).
+ * Measured on the `data_url` length, which bounds both the request size and the
+ * per-juror vision cost.
+ */
+export function checkImageSize(dataUrl: string): ImageSizeDecision {
+  const chars = dataUrl.length;
+  if (chars > MAX_IMAGE_DATA_URL_CHARS) {
+    return {
+      ok: false,
+      code: "too_large",
+      message:
+        "That image is too large. Please upload an image under ~5 MB and try again.",
+      limit: MAX_IMAGE_DATA_URL_CHARS,
+      actual: chars,
+    };
+  }
+  return { ok: true, chars };
+}
+
+/**
  * Estimated fixed prompt overhead per juror (system prompt + scaffolding around
  * the content). A coarse constant; the point is that the fan-out cost scales
  * with the juror count, not just the content length.
@@ -104,6 +139,13 @@ export interface ReviewTokenInputs {
    * 0 (the default) when the company has no stored brand guide.
    */
   brandContextTokens?: number;
+  /**
+   * Estimated tokens of the company's business context (Day 23a). Unlike brand
+   * context, this is injected into EVERY juror (it grounds all five in the
+   * business the ad is for), so it scales with the juror count like the content
+   * itself. 0 (the default) when the company has no usable business identity.
+   */
+  businessContextTokens?: number;
 }
 
 /**
@@ -117,7 +159,15 @@ export function estimateReviewInputTokens(inputs: ReviewTokenInputs): number {
   const jurorCount = Math.max(0, Math.floor(inputs.jurorCount));
   const contentTokens = Math.max(0, Math.floor(inputs.contentTokens));
   const brandContextTokens = Math.max(0, Math.floor(inputs.brandContextTokens ?? 0));
-  const perJuror = contentTokens + PROMPT_OVERHEAD_TOKENS_PER_JUROR;
+  const businessContextTokens = Math.max(
+    0,
+    Math.floor(inputs.businessContextTokens ?? 0),
+  );
+  // Content, per-juror overhead, and business context are each seen by every
+  // juror, so they scale with the juror count; brand context is scoped to one
+  // juror (Day 27), so it is added a single time.
+  const perJuror =
+    contentTokens + businessContextTokens + PROMPT_OVERHEAD_TOKENS_PER_JUROR;
   return perJuror * jurorCount + brandContextTokens;
 }
 
@@ -167,6 +217,7 @@ export function estimateReviewUsage(
   content: string,
   jurorCount: number,
   brandContextTokens = 0,
+  businessContextTokens = 0,
 ): ReviewUsageEstimate {
   const contentTokens = estimateTokens(content);
   const count = Math.max(0, Math.floor(jurorCount));
@@ -177,6 +228,7 @@ export function estimateReviewUsage(
       contentTokens,
       jurorCount: count,
       brandContextTokens,
+      businessContextTokens,
     }),
     maxOutputTokens: MAX_OUTPUT_TOKENS_PER_JUROR * count,
   };
@@ -205,6 +257,12 @@ export interface ReviewUsageLogMeta {
    * keeps the redaction contract. Optional so pre-Day-30 callers still typecheck.
    */
   brandSource?: "cache" | "recomputed" | "none";
+  /**
+   * How the business context was sourced (DailyPlan Day 23a): `cache`,
+   * `recomputed`, or `none`. Content-free — a small enum, never business text —
+   * so it keeps the redaction contract. Optional so earlier callers typecheck.
+   */
+  businessSource?: "cache" | "recomputed" | "none";
 }
 
 /** A flat, content-free record ready to log. */

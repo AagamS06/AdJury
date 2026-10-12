@@ -327,8 +327,15 @@ describe("authz audit — identity comes from the session, never the client", ()
       submitted_by: "forged",
       role: "admin",
     });
-    // Only the content fields survive; no identity field is accepted.
-    expect(Object.keys(parsed).sort()).toEqual(["content_text", "content_type", "platform"]);
+    // Only the client-supplied content/format fields survive; no identity field
+    // is accepted (media_type/image are the ad-format inputs, added Day 15a).
+    expect(Object.keys(parsed).sort()).toEqual([
+      "content_text",
+      "content_type",
+      "image",
+      "media_type",
+      "platform",
+    ]);
     expect("company_id" in parsed).toBe(false);
     expect("submitted_by" in parsed).toBe(false);
     expect("role" in parsed).toBe(false);

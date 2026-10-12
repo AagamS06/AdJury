@@ -18,6 +18,8 @@ const VALID_FIELDS = {
   content_text: "  Introducing our new sleep aid — clinically studied.  ",
   content_type: "ad_copy",
   platform: "instagram",
+  media_type: "text",
+  image: null,
 };
 
 /** A minimal, schema-valid review payload for the success path. */
@@ -25,6 +27,7 @@ function sampleReview(): ReviewResult {
   return {
     review_id: "rev-1",
     content_type: "ad_copy",
+    media_type: "text",
     platform: "instagram",
     model: "mock",
     created_at: "2026-09-04T00:00:00.000Z",
@@ -108,7 +111,7 @@ describe("validateReviewForm", () => {
 describe("submitReview", () => {
   it("returns the parsed review on a 201 with a valid payload", async () => {
     const outcome = await submitReview(
-      { content_text: "hi", content_type: "email", platform: null },
+      { content_text: "hi", content_type: "email", platform: null, media_type: "text", image: null },
       fetchStub(201, sampleReview()),
     );
     expect(outcome.ok).toBe(true);
@@ -119,7 +122,7 @@ describe("submitReview", () => {
 
   it("surfaces the API error message on a 4xx/5xx", async () => {
     const outcome = await submitReview(
-      { content_text: "hi", content_type: "email", platform: null },
+      { content_text: "hi", content_type: "email", platform: null, media_type: "text", image: null },
       fetchStub(401, { error: "You must be signed in to submit a review." }),
     );
     expect(outcome.ok).toBe(false);
@@ -129,7 +132,7 @@ describe("submitReview", () => {
 
   it("reports a generic error when a success payload is malformed", async () => {
     const outcome = await submitReview(
-      { content_text: "hi", content_type: "email", platform: null },
+      { content_text: "hi", content_type: "email", platform: null, media_type: "text", image: null },
       fetchStub(201, { not: "a review" }),
     );
     expect(outcome.ok).toBe(false);
@@ -142,7 +145,7 @@ describe("submitReview", () => {
       throw new Error("network down");
     }) as unknown as typeof fetch;
     const outcome = await submitReview(
-      { content_text: "hi", content_type: "email", platform: null },
+      { content_text: "hi", content_type: "email", platform: null, media_type: "text", image: null },
       rejectingFetch,
     );
     expect(outcome.ok).toBe(false);

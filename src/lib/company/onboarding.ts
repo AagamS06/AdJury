@@ -83,6 +83,19 @@ export const CompanyOnboardingSchema = z.object({
   plan_tier: z.enum(["free", "pro", "enterprise"], {
     errorMap: () => ({ message: "Choose a plan." }),
   }),
+  /**
+   * The company's public website (Day 23a) — optional. AdJury uses it to research
+   * what the business does and ground every review in its field/audience. Kept
+   * lenient here (an empty string → "not provided"); `normalizeWebsiteUrl`
+   * canonicalizes it and rejects junk before research/caching. Capped so a
+   * pasted essay can't land in the field.
+   */
+  website_url: z
+    .string()
+    .trim()
+    .max(300, "Website URL must be 300 characters or fewer.")
+    .optional()
+    .default(""),
 });
 
 export type CompanyOnboardingInput = z.infer<typeof CompanyOnboardingSchema>;

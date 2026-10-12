@@ -32,6 +32,9 @@ function inputWith(platform: string | null): ReviewInput {
     content_type: "ad_copy",
     platform,
     brand_context: null,
+    business_context: null,
+    media_type: "text",
+    image: null,
   };
 }
 

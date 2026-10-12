@@ -21,6 +21,7 @@ export default async function OnboardingPage() {
         companyName={company.name}
         industry={company.industry}
         planTier={company.plan_tier}
+        websiteUrl={company.website_url ?? null}
         alreadyOnboarded={company.onboarded_at != null}
       />
     </main>

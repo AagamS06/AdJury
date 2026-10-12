@@ -272,7 +272,7 @@ describe("runReview provider resilience (DoD: degrade gracefully, still return)"
 
     // The composed review still validates against the contract.
     expect(() => ReviewResultSchema.parse(review)).not.toThrow();
-    expect(review.jurors).toHaveLength(5);
+    expect(review.jurors).toHaveLength(PERSONA_NAMES.length);
 
     const failed = review.jurors.find((j) => j.persona === failing);
     expect(failed?.status).toBe("error");
@@ -327,7 +327,7 @@ describe("runReview provider resilience (DoD: degrade gracefully, still return)"
     };
 
     const review = await runReview(input, { client, resilience: noWait });
-    expect(review.jurors).toHaveLength(5);
+    expect(review.jurors).toHaveLength(PERSONA_NAMES.length);
     expect(review.jurors.every((j) => j.status === "error")).toBe(true);
     // computeAggregate returns 0 when no juror scored; createReview turns an
     // all-error review into a 502 (proven in the endpoint suite) — here we just

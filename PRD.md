@@ -6,7 +6,7 @@
 
 ## 1. Summary
 
-**AdJury** is an AI-powered content critique platform. Businesses submit marketing content (ad copy, social posts, emails, landing-page copy) and it is reviewed by **five distinct AI "juror" personas**, each scoring and critiquing from a different professional angle. Every review returns per-juror scores, an aggregate score, flagged issues, and **actionable suggested rewrites**.
+**AdJury** is an AI-powered content critique platform. Businesses submit marketing content — **as text or as an image ad** (short- and long-form video are planned) — and it is reviewed by **six distinct AI "juror" personas**, each scoring and critiquing from a different professional angle. Every review returns per-juror scores, an aggregate score, flagged issues, and **actionable suggested rewrites**. Reviews are grounded in the posting company's own context: AdJury records the company's name + website and researches what the business does from public sources so the jurors judge the ad for the right business and market.
 
 AdJury is a **review / QA layer**, not a content generator. Humans stay in control; AdJury slots into the pre-publish workflow that marketing teams already have.
 
@@ -56,7 +56,7 @@ Today this is done by ad-hoc human review, if at all. It is inconsistent, slow, 
 
 ---
 
-## 5. The Five Jurors
+## 5. The Six Jurors
 
 Each juror is the **same model** with a different system prompt, rubric, and output contract.
 
@@ -67,6 +67,7 @@ Each juror is the **same model** with a different system prompt, rubric, and out
 | 3 | **Target Audience Fit** | Audience resonance | Whether copy speaks to the stated demographic/persona; jargon mismatch, wrong register |
 | 4 | **SEO / Discoverability** | Findability | Keyword presence, platform-specific best practices, metadata/length |
 | 5 | **"Would I Stop Scrolling"** | Engagement / hook | Weak hooks, buried value, boring openers — from a jaded-consumer POV |
+| 6 | **Business Analyst (Insider)** | Fit to the posting company's actual business & market | Whether the ad reflects what the company really offers and advances a believable business goal — a secondary *insider* read grounded only in the business context researched from public sources (never invented) |
 
 ### 5.1 Scoring rubric (applies to every juror)
 
@@ -84,7 +85,7 @@ Per-juror rubric detail (what a 1 vs a 10 looks like on each lens) is maintained
 
 ### 5.2 Aggregate score & verdict
 
-- **Aggregate** = weighted mean of the five juror scores. Default weights are equal (0.2 each); weights are configurable per plan/company later.
+- **Aggregate** = weighted mean of the six juror scores. Default weights are equal (the aggregate is a normalized weighted mean, so equal weights count every juror the same regardless of count); weights are configurable per plan/company later.
 - **Verdict** is derived from the aggregate and any high-severity compliance flag:
   - `pass` — aggregate ≥ 7.5 **and** no high-severity compliance issue
   - `revise` — aggregate 5.0–7.4, **or** any medium issue
@@ -95,8 +96,9 @@ Per-juror rubric detail (what a 1 vs a 10 looks like on each lens) is maintained
 ## 6. Core Features
 
 ### 6.1 v1 (MVP — must have)
-- **Submit content** for review (paste text; choose content type + target platform).
-- **Run the 5 jurors** against the content in one request.
+- **Submit content** for review as **text or an image ad** (paste copy or upload the creative + its caption/headline/CTA; choose content type + target platform). Short- and long-form **video** are a planned later format (they need a transcription + frame-sampling pipeline).
+- **Business context** — capture the company's name + website once; AdJury researches the business from public sources and grounds every juror in its field/market.
+- **Run the 6 jurors** against the content in one request.
 - **Scorecard UI** — per-juror score, summary, issues, and suggested rewrite; aggregate + verdict up top.
 - **Review history** per company.
 - **Auth + roles** — admin vs member.
@@ -110,7 +112,10 @@ Per-juror rubric detail (what a 1 vs a 10 looks like on each lens) is maintained
 - **Cost controls** — per-tier rate limits, token budgeting.
 
 ### 6.3 v2 (later / nice to have)
-- **Stripe billing** wired to subscription tiers.
+- **Stripe billing** wired to subscription tiers — target entry price **AUD $20/month**, with a public free trial (final shape TBD: a general 3-month promo trial, or a 1-month trial limited to one account per business, one-time, cancel anytime). See [DailyPlan.md](DailyPlan.md) Week 11.
+- **Video ad review** — short-form then long-form (audio transcription + keyframe sampling + on-image text), extending the multi-format input beyond text/image.
+- **Draft Assistant (generation)** — an *optional, clearly separate* mode that drafts ad copy on request, kept distinct from the jury so the critique never grades its own output. AdJury's core stays a QA/review layer (see §3); generation is additive, not a pivot.
+- **Production data & hosting** — secure managed Postgres (Supabase) + object storage for uploaded image/video creatives, deployed on Vercel (test → own domain → prod). See [DailyPlan.md](DailyPlan.md) Week 12.
 - Custom juror weights per company.
 - Additional/custom jurors defined by the customer.
 - Integrations (Slack, browser extension, CMS pre-publish hook).
@@ -150,7 +155,7 @@ All five personas return objects conforming to a single schema so results store 
 ```
 
 **Rules for the contract**
-- `persona` ∈ `brand_voice_guardian | compliance_legal_flagger | target_audience_fit | seo_discoverability | stop_scrolling`.
+- `persona` ∈ `brand_voice_guardian | compliance_legal_flagger | target_audience_fit | seo_discoverability | stop_scrolling | business_analyst`.
 - `score` is an integer 0–10; `confidence` ∈ `high | medium | low`.
 - `severity` ∈ `high | medium | low`. `issues` may be an empty array.
 - `suggested_rewrite` is required (may equal the original if nothing to change — but must be present).

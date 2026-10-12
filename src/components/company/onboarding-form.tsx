@@ -32,11 +32,13 @@ export function OnboardingForm({
   companyName,
   industry,
   planTier,
+  websiteUrl,
   alreadyOnboarded,
 }: {
   companyName: string;
   industry: string | null;
   planTier: PlanTier;
+  websiteUrl: string | null;
   alreadyOnboarded: boolean;
 }) {
   const [state, formAction] = useActionState(completeOnboardingAction, INITIAL);
@@ -82,6 +84,31 @@ export function OnboardingForm({
               autoComplete="organization"
               className="w-full rounded-sm border border-border bg-surface px-3 py-2 text-body outline-none focus-visible:border-royal focus-visible:ring-2 focus-visible:ring-royal-bright"
             />
+          </div>
+
+          <div className="mb-4">
+            <label
+              htmlFor="website_url"
+              className="mb-1 block text-sm font-medium text-body"
+            >
+              Website{" "}
+              <span className="font-normal text-muted">(optional)</span>
+            </label>
+            <input
+              id="website_url"
+              name="website_url"
+              type="url"
+              inputMode="url"
+              maxLength={300}
+              defaultValue={websiteUrl ?? ""}
+              placeholder="https://yourcompany.com"
+              autoComplete="url"
+              className="w-full rounded-sm border border-border bg-surface px-3 py-2 text-body outline-none focus-visible:border-royal focus-visible:ring-2 focus-visible:ring-royal-bright"
+            />
+            <p className="mt-1 text-xs text-muted">
+              AdJury researches your site so every review understands what your
+              business does.
+            </p>
           </div>
 
           <div className="mb-6">

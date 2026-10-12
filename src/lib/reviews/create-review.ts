@@ -16,6 +16,7 @@
 import type { ModelClient } from "@/lib/ai/client";
 import {
   checkContentSize,
+  checkImageSize,
   checkTokenBudget,
   estimateReviewUsage,
   estimateTokens,
@@ -27,6 +28,10 @@ import {
   resolveBrandSummary,
   type BrandSummarySource,
 } from "@/lib/company/brand-summary";
+import {
+  resolveBusinessContext,
+  type BusinessContextSource,
+} from "@/lib/company/business-context";
 import type { InsertReviewParams, ReviewRateUsage } from "@/lib/db/queries";
 import {
   evaluateRateLimit,
@@ -117,6 +122,16 @@ export async function createReview(
     return { ok: false, status: 400, error: sizeDecision.message };
   }
 
+  // 2b-i. Image ads (DailyPlan Day 15a): bound the image payload before the
+  //       fan-out (Rules.md §1/§6). The schema already guarantees an image is
+  //       present for an image ad and its MIME is allowed; this caps its size.
+  if (parsed.data.media_type === "image" && parsed.data.image) {
+    const imageDecision = checkImageSize(parsed.data.image.data_url);
+    if (!imageDecision.ok) {
+      return { ok: false, status: 400, error: imageDecision.message };
+    }
+  }
+
   // 2c. Load the company's stored brand guide (DailyPlan Day 27) and resolve the
   //     `brand_context` for the Brand Voice Guardian from the **cached** brand
   //     summary written once per save (DailyPlan Day 29/30) rather than
@@ -143,11 +158,25 @@ export async function createReview(
   }
   const brandContextTokens = brandContext ? estimateTokens(brandContext) : 0;
 
+  // Business context (DailyPlan Day 23a): what business the ad is for, resolved
+  // from the company's identity + cached research (never the client — Rules.md
+  // §5) and injected into EVERY juror so each judges the ad in the right business
+  // context (PRD §4/§5). The company comes from the server session. Pure + cached,
+  // so no DB read and no model spend on the review path.
+  const resolvedBusiness = resolveBusinessContext(deps.session.company);
+  const businessContext = resolvedBusiness.summary;
+  const businessSource: BusinessContextSource = resolvedBusiness.source;
+  const businessContextTokens = businessContext
+    ? estimateTokens(businessContext)
+    : 0;
+
   const budgetDecision = checkTokenBudget({
     contentTokens: estimateTokens(parsed.data.content_text),
     jurorCount: PERSONA_NAMES.length,
     // Brand context is injected into a single juror, so it is counted once.
     brandContextTokens,
+    // Business context is injected into every juror, so it scales with the count.
+    businessContextTokens,
   });
   if (!budgetDecision.ok) {
     return { ok: false, status: 400, error: budgetDecision.message };
@@ -194,6 +223,10 @@ export async function createReview(
       content_type: parsed.data.content_type,
       platform: parsed.data.platform,
       brand_context: brandContext,
+      business_context: businessContext,
+      // Multi-format input (Day 15a): the ad format + its image (null for text).
+      media_type: parsed.data.media_type,
+      image: parsed.data.image,
     },
     {
       client: deps.client,
@@ -245,6 +278,7 @@ export async function createReview(
       parsed.data.content_text,
       PERSONA_NAMES.length,
       brandContextTokens,
+      businessContextTokens,
     ),
     {
       op: "createReview",
@@ -262,6 +296,8 @@ export async function createReview(
       // Whether the brand context was reused from cache, recomputed, or absent
       // (DailyPlan Day 30) — content-free observability that "verified reuse" holds.
       brandSource,
+      // Likewise for the business context (DailyPlan Day 23a).
+      businessSource,
     },
   );
 

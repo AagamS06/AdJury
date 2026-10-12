@@ -249,7 +249,9 @@ describe("runReview — corrective nudge is output-only (Day 19)", () => {
     if (compliance.status === "error") {
       expect(compliance.error).toBe("invalid model output (not JSON)");
     }
-    expect(review.jurors.filter((j) => j.status === "ok")).toHaveLength(4);
+    expect(review.jurors.filter((j) => j.status === "ok")).toHaveLength(
+      ALL_PERSONAS.length - 1,
+    );
   });
 });
 

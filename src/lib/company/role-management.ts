@@ -15,6 +15,7 @@
  * pure guard the core enforces.
  */
 import { z } from "zod";
+import { MAX_USER_ID_CHARS } from "@/lib/validation/limits";
 import type { UserRole, UserRow } from "@/types/db";
 
 /**
@@ -23,7 +24,11 @@ import type { UserRole, UserRow } from "@/types/db";
  * from the session server-side, never from this input (Rules.md §5).
  */
 export const RoleChangeSchema = z.object({
-  userId: z.string().trim().min(1, "Choose a teammate to update."),
+  userId: z
+    .string()
+    .trim()
+    .min(1, "Choose a teammate to update.")
+    .max(MAX_USER_ID_CHARS, "That teammate isn't on your team."),
   role: z.enum(["admin", "member"], {
     errorMap: () => ({ message: "Choose a role." }),
   }),

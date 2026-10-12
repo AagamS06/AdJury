@@ -19,6 +19,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { formatHistoryDate } from "@/lib/reviews/history-view";
 import { roleLabel } from "@/lib/company/team-view";
+import { MAX_EMAIL_CHARS, MAX_INVITE_TOKEN_CHARS } from "@/lib/validation/limits";
 import type { InvitationRow, UserRole } from "@/types/db";
 
 /** Entropy for a raw invite token (32 bytes → 64 hex chars). */
@@ -48,6 +49,18 @@ export function generateInviteToken(
  */
 export function hashInviteToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");
+}
+
+/**
+ * Whether a presented invite token is plausibly well-formed (DailyPlan Day 45 —
+ * input hardening): a non-empty, length-bounded string. The authoritative check
+ * is still the hash lookup — a token that doesn't hash to a stored invite is
+ * rejected regardless — but bounding the length here means an absurdly large
+ * bearer value is turned away at the boundary before it is ever hashed, rather
+ * than making the server hash attacker-sized input.
+ */
+export function isWellFormedInviteToken(token: string): boolean {
+  return token.length > 0 && token.length <= MAX_INVITE_TOKEN_CHARS;
 }
 
 /** ISO expiry timestamp for an invite created at `now`. */
@@ -80,7 +93,13 @@ export function inviteAcceptUrl(
  * of this — they are derived from the session server-side (Rules.md §5).
  */
 export const CreateInvitationSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Enter a valid email address."),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(1, "Enter an email address.")
+    .max(MAX_EMAIL_CHARS, "That email address is too long.")
+    .email("Enter a valid email address."),
   role: z.enum(["admin", "member"], {
     errorMap: () => ({ message: "Choose a role." }),
   }),

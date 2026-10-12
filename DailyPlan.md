@@ -234,8 +234,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Server-side authorization review across all `/api` routes. **Completed 2026-10-11.**
 - DoD: no route trusts client-supplied identity.
 
-### Day 45 — Input hardening
-- [ ] Validation/sanitization + size limits sweep on all inputs.
+### Day 45 — Input hardening ✅
+- [x] Validation/sanitization + size limits sweep on all inputs. **Completed 2026-10-12.**
 - DoD: malformed/oversized inputs rejected cleanly.
 
 ### Day 46 — Secrets review

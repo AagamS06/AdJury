@@ -34,7 +34,9 @@ import {
   hashInviteToken,
   inviteAcceptUrl,
   invitationState,
+  isWellFormedInviteToken,
 } from "./invitations";
+import { MAX_PASSWORD_CHARS, MIN_PASSWORD_CHARS } from "@/lib/validation/limits";
 import {
   CompanyOnboardingSchema,
   firstOnboardingIssue,
@@ -268,7 +270,9 @@ export async function acceptInvitationAction(
   formData: FormData,
 ): Promise<AcceptInviteState> {
   const token = field(formData, "token");
-  if (!token) return { error: "This invitation link isn't valid." };
+  if (!isWellFormedInviteToken(token)) {
+    return { error: "This invitation link isn't valid." };
+  }
 
   const result = await runAccept(token);
   if (!result.ok) return { error: result.error };
@@ -277,7 +281,10 @@ export async function acceptInvitationAction(
 }
 
 const invitePasswordSchema = z.object({
-  password: z.string().min(8, "Password must be at least 8 characters."),
+  password: z
+    .string()
+    .min(MIN_PASSWORD_CHARS, `Password must be at least ${MIN_PASSWORD_CHARS} characters.`)
+    .max(MAX_PASSWORD_CHARS, `Password must be ${MAX_PASSWORD_CHARS} characters or fewer.`),
 });
 
 export interface InviteSignupState {
@@ -298,7 +305,9 @@ export async function signUpViaInviteAction(
   formData: FormData,
 ): Promise<InviteSignupState> {
   const token = field(formData, "token");
-  if (!token) return { error: "This invitation link isn't valid." };
+  if (!isWellFormedInviteToken(token)) {
+    return { error: "This invitation link isn't valid." };
+  }
 
   const parsed = invitePasswordSchema.safeParse({
     password: field(formData, "password"),

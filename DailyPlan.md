@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-10-08 (Day 41 — Export UI)
+> **Status:** Active · **Last updated:** 2026-10-09 (Day 42 — Week 6 hardening)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -203,8 +203,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Export buttons + download UX on review/history pages. **Completed 2026-10-08.**
 - DoD: one-click export from the UI.
 
-### Day 42 — Week 6 hardening
-- [ ] Tests + review; Memory.md; Week 6 summary.
+### Day 42 — Week 6 hardening ✅
+- [x] Tests + review; Memory.md; Week 6 summary. **Completed 2026-10-09.**
 - DoD: tests green; Memory.md current.
 
 ---

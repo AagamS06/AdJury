@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MAX_CONTENT_CHARS } from "@/lib/ai/cost";
+import { MAX_PLATFORM_CHARS } from "@/lib/validation/limits";
 
 /**
  * The juror JSON contract. This is the single source of truth that every
@@ -122,7 +123,19 @@ const ReviewFields = z.object({
       `Content must be ${MAX_CONTENT_CHARS.toLocaleString()} characters or fewer.`,
     ),
   content_type: z.enum(["ad_copy", "social_post", "email", "landing_page"]),
-  platform: z.string().nullable().default(null),
+  /**
+   * Target platform — free-form and nullable, but length-bounded (DailyPlan
+   * Day 45 — input hardening). `platform` is persisted and injected into the
+   * platform-aware prompts (Day 20) yet is NOT counted in the review token
+   * budget, so without a cap an unbounded value would slip past the content
+   * limit; trimmed so a padded value is stored clean.
+   */
+  platform: z
+    .string()
+    .trim()
+    .max(MAX_PLATFORM_CHARS, `Platform must be ${MAX_PLATFORM_CHARS} characters or fewer.`)
+    .nullable()
+    .default(null),
   brand_context: z.string().nullable().default(null),
   /**
    * Bounded business-context summary (Day 23a): what business the ad is for — its

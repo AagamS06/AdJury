@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-10-12 (merged goals: image ads, business context, Business Analyst juror; future: video, billing, generation, prod infra)
+> **Status:** Active · **Last updated:** 2026-10-13 (Day 46 — secrets review: client-bundle leak scan + `.env.example` audit)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -238,8 +238,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Validation/sanitization + size limits sweep on all inputs. **Completed 2026-10-12.**
 - DoD: malformed/oversized inputs rejected cleanly.
 
-### Day 46 — Secrets review
-- [ ] Confirm no service-role key or AI key reaches the client bundle; `.env.example` complete.
+### Day 46 — Secrets review ✅
+- [x] Confirm no service-role key or AI key reaches the client bundle; `.env.example` complete. **Completed 2026-10-13.**
 - DoD: secrets server-only; documented.
 
 ### Day 47 — Abuse protections

@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/auth/supabase-server";
 import { getSessionContext } from "@/lib/auth/session";
 import { getReviewById } from "@/lib/db/queries";
+import {
+  checkReadRateLimit,
+  readRateLimitHeaders,
+} from "@/lib/reviews/read-access";
 import { getReviewForCompany } from "@/lib/reviews/read-reviews";
 
 /**
@@ -26,6 +30,19 @@ export async function GET(
 
   // Fail closed on any session-resolution failure (e.g. missing Supabase env).
   const session = await getSessionContext().catch(() => null);
+
+  // Day 47: per-plan read rate limit, enforced before the DB read. Only
+  // meaningful for an authenticated caller — an anon request falls through to the
+  // read core's 401 below (no point consuming a company's slot for it).
+  if (session) {
+    const limited = checkReadRateLimit({ session });
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: limited.error, ...limited.rateLimit },
+        { status: 429, headers: readRateLimitHeaders(limited.rateLimit) },
+      );
+    }
+  }
 
   const result = await getReviewForCompany(id, {
     session,

@@ -5,7 +5,10 @@ import { getReviewRateUsage, type InsertReviewParams } from "@/lib/db/queries";
 import {
   DAY_MS,
   PLAN_RATE_LIMITS,
+  composeRateLimitMessage,
   evaluateRateLimit,
+  formatRetryHint,
+  rateLimitHeaders,
   rateLimitMessage,
   rateLimitWindowStart,
   resolveRateLimitPolicy,
@@ -139,6 +142,95 @@ describe("rateLimitMessage", () => {
     });
     expect(msg).toContain("10 per 24 hours");
     expect(msg).toContain("try again later");
+  });
+});
+
+// ── shared limiter helpers (Day 47 — "enforced consistently") ──────────────
+
+describe("formatRetryHint", () => {
+  const base = { allowed: false, limit: 10, remaining: 0, resetAt: null };
+
+  it("returns a minute-scale hint for a sub-hour wait", () => {
+    expect(formatRetryHint({ ...base, retryAfterSeconds: 120 })).toBe(
+      "about 2 minute(s)",
+    );
+    // Rounds up to whole minutes.
+    expect(formatRetryHint({ ...base, retryAfterSeconds: 45 })).toBe(
+      "about 1 minute(s)",
+    );
+  });
+
+  it("returns an hour-scale hint for an hour-or-more wait", () => {
+    expect(formatRetryHint({ ...base, retryAfterSeconds: 3600 })).toBe(
+      "about 1 hour(s)",
+    );
+    expect(formatRetryHint({ ...base, retryAfterSeconds: 2 * 3600 })).toBe(
+      "about 2 hour(s)",
+    );
+  });
+
+  it("returns null when there is no positive retry-after", () => {
+    expect(formatRetryHint({ ...base, retryAfterSeconds: null })).toBeNull();
+    expect(formatRetryHint({ ...base, retryAfterSeconds: 0 })).toBeNull();
+  });
+});
+
+describe("composeRateLimitMessage", () => {
+  it("appends a retry hint when known, else a generic fallback", () => {
+    const withHint = composeRateLimitMessage("Base clause.", {
+      allowed: false,
+      limit: 5,
+      remaining: 0,
+      resetAt: "2026-09-13T13:00:00.000Z",
+      retryAfterSeconds: 120,
+    });
+    expect(withHint).toBe(
+      "Base clause. Please try again in about 2 minute(s), or upgrade your plan for a higher limit.",
+    );
+
+    const noHint = composeRateLimitMessage("Base clause.", {
+      allowed: false,
+      limit: 5,
+      remaining: 0,
+      resetAt: null,
+      retryAfterSeconds: null,
+    });
+    expect(noHint).toBe(
+      "Base clause. Please try again later, or upgrade your plan for a higher limit.",
+    );
+  });
+});
+
+describe("rateLimitHeaders", () => {
+  it("emits limit/remaining and, when present, reset + retry-after", () => {
+    expect(
+      rateLimitHeaders({
+        allowed: false,
+        limit: 10,
+        remaining: 0,
+        resetAt: "2026-09-13T13:00:00.000Z",
+        retryAfterSeconds: 120,
+      }),
+    ).toEqual({
+      "X-RateLimit-Limit": "10",
+      "X-RateLimit-Remaining": "0",
+      "X-RateLimit-Reset": "2026-09-13T13:00:00.000Z",
+      "Retry-After": "120",
+    });
+  });
+
+  it("omits reset/retry-after when the decision has none", () => {
+    const headers = rateLimitHeaders({
+      allowed: true,
+      limit: 10,
+      remaining: 9,
+      resetAt: null,
+      retryAfterSeconds: null,
+    });
+    expect(headers).toEqual({
+      "X-RateLimit-Limit": "10",
+      "X-RateLimit-Remaining": "9",
+    });
   });
 });
 

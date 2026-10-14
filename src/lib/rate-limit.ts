@@ -110,18 +110,65 @@ export function evaluateRateLimit(
 }
 
 /**
- * Plain-language, actionable 429 message (Rules.md §6). Names the limit and,
- * when known, when the caller can try again — never leaks internal detail.
+ * A human retry hint ("about N minute(s)/hour(s)") for a blocked decision, or
+ * null when no reset is known. Shared by every limiter's 429 message so the retry
+ * wording is identical across the review, export, and read limiters (Rules.md §7
+ * — consistency is credibility). Returns null for an allowed decision or one with
+ * no positive retry-after so the caller can fall back to a generic "try again
+ * later".
+ */
+export function formatRetryHint(decision: RateLimitDecision): string | null {
+  if (!decision.retryAfterSeconds || decision.retryAfterSeconds <= 0) return null;
+  const minutes = Math.ceil(decision.retryAfterSeconds / 60);
+  return minutes >= 60
+    ? `about ${Math.ceil(minutes / 60)} hour(s)`
+    : `about ${minutes} minute(s)`;
+}
+
+/**
+ * Compose a plain-language, actionable 429 message (Rules.md §6) from a base
+ * clause that already names the limit + window. Shared across limiters so the
+ * retry/upgrade phrasing never drifts; each limiter supplies only its own
+ * limit-and-window clause (e.g. "... review limit (10 per 24 hours).").
+ */
+export function composeRateLimitMessage(
+  baseClause: string,
+  decision: RateLimitDecision,
+): string {
+  const hint = formatRetryHint(decision);
+  return hint
+    ? `${baseClause} Please try again in ${hint}, or upgrade your plan for a higher limit.`
+    : `${baseClause} Please try again later, or upgrade your plan for a higher limit.`;
+}
+
+/**
+ * Plain-language, actionable 429 message for the REVIEW limiter (Rules.md §6).
+ * Names the limit and, when known, when the caller can try again — never leaks
+ * internal detail.
  */
 export function rateLimitMessage(decision: RateLimitDecision): string {
-  const base = `You've reached your plan's review limit (${decision.limit} per 24 hours).`;
-  if (decision.retryAfterSeconds && decision.retryAfterSeconds > 0) {
-    const minutes = Math.ceil(decision.retryAfterSeconds / 60);
-    const when =
-      minutes >= 60
-        ? `about ${Math.ceil(minutes / 60)} hour(s)`
-        : `about ${minutes} minute(s)`;
-    return `${base} Please try again in ${when}, or upgrade your plan for a higher limit.`;
+  return composeRateLimitMessage(
+    `You've reached your plan's review limit (${decision.limit} per 24 hours).`,
+    decision,
+  );
+}
+
+/**
+ * Standard rate-limit response headers for a decision (Rules.md §6 — surface the
+ * limit + reset info). Returned as a plain record so the framework-agnostic lib
+ * stays free of `next/server`; a route spreads it into the response. Shared by
+ * every limiter so the header shape is identical across review/export/read.
+ */
+export function rateLimitHeaders(
+  decision: RateLimitDecision,
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    "X-RateLimit-Limit": String(decision.limit),
+    "X-RateLimit-Remaining": String(decision.remaining),
+  };
+  if (decision.resetAt) headers["X-RateLimit-Reset"] = decision.resetAt;
+  if (decision.retryAfterSeconds !== null) {
+    headers["Retry-After"] = String(decision.retryAfterSeconds);
   }
-  return `${base} Please try again later, or upgrade your plan for a higher limit.`;
+  return headers;
 }

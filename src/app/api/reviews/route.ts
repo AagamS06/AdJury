@@ -9,7 +9,12 @@ import {
 } from "@/lib/db/queries";
 import { serverClient } from "@/lib/db/supabase";
 import { createReview } from "@/lib/reviews/create-review";
+import {
+  checkReadRateLimit,
+  readRateLimitHeaders,
+} from "@/lib/reviews/read-access";
 import { listReviewsForCompany } from "@/lib/reviews/read-reviews";
+import { rateLimitHeaders } from "@/lib/rate-limit";
 
 /**
  * POST /api/reviews (DailyPlan Day 5) and GET /api/reviews (DailyPlan Day 6).
@@ -69,18 +74,12 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json(result.review, { status: result.status });
   }
   if (result.status === 429) {
-    // Surface the limit + reset info in headers and the body (Rules.md §6).
+    // Surface the limit + reset info in headers and the body (Rules.md §6),
+    // using the shared header builder so every limiter emits the same shape.
     const { limit, remaining, resetAt, retryAfterSeconds } = result.rateLimit;
-    const headers = new Headers();
-    headers.set("X-RateLimit-Limit", String(limit));
-    headers.set("X-RateLimit-Remaining", String(remaining));
-    if (resetAt) headers.set("X-RateLimit-Reset", resetAt);
-    if (retryAfterSeconds !== null) {
-      headers.set("Retry-After", String(retryAfterSeconds));
-    }
     return NextResponse.json(
       { error: result.error, limit, remaining, resetAt, retryAfterSeconds },
-      { status: 429, headers },
+      { status: 429, headers: rateLimitHeaders(result.rateLimit) },
     );
   }
   return NextResponse.json({ error: result.error }, { status: result.status });
@@ -89,6 +88,19 @@ export async function POST(request: Request): Promise<Response> {
 export async function GET(request: Request): Promise<Response> {
   // Fail closed on any session-resolution failure (e.g. missing Supabase env).
   const session = await getSessionContext().catch(() => null);
+
+  // Day 47: per-plan read rate limit, enforced before the DB read. Only
+  // meaningful for an authenticated caller — an anon request falls through to the
+  // read core's 401 below (no point consuming a company's slot for it).
+  if (session) {
+    const limited = checkReadRateLimit({ session });
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: limited.error, ...limited.rateLimit },
+        { status: 429, headers: readRateLimitHeaders(limited.rateLimit) },
+      );
+    }
+  }
 
   const limitParam = new URL(request.url).searchParams.get("limit");
   const limit =

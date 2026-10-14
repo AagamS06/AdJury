@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-10-13 (Day 46 — secrets review: client-bundle leak scan + `.env.example` audit)
+> **Status:** Active · **Last updated:** 2026-10-14 (Day 47 — abuse protections: read-endpoint rate limiter + abuse-surface audit; limits enforced consistently end-to-end)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -242,8 +242,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Confirm no service-role key or AI key reaches the client bundle; `.env.example` complete. **Completed 2026-10-13.**
 - DoD: secrets server-only; documented.
 
-### Day 47 — Abuse protections
-- [ ] Review rate limits + basic abuse safeguards end-to-end.
+### Day 47 — Abuse protections ✅
+- [x] Review rate limits + basic abuse safeguards end-to-end. **Completed 2026-10-14.**
 - DoD: limits enforced consistently.
 
 ### Day 48 — Observability

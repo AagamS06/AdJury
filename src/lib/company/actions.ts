@@ -41,6 +41,7 @@ import {
   CompanyOnboardingSchema,
   firstOnboardingIssue,
 } from "./onboarding";
+import { logError, errorContext } from "@/lib/observability/logger";
 
 /**
  * Company onboarding server action (DailyPlan Day 22). Logic lives here, not in
@@ -97,10 +98,10 @@ export async function completeOnboardingAction(
   } catch (err) {
     // Surface a plain message; keep internal detail in logs, no secrets/PII
     // (Rules.md §6).
-    console.error("company onboarding failed", {
+    logError("company onboarding failed", {
       op: "completeOnboardingAction",
       companyId: session.companyId,
-      message: err instanceof Error ? err.message : "unknown error",
+      ...errorContext(err),
     });
     return {
       error: "We couldn't save your company details. Please try again.",

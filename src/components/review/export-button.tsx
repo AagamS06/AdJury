@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { logError, errorContext } from "@/lib/observability/logger";
 import type { ExportTarget } from "@/lib/reviews/export-ui";
 import {
   exportErrorMessage,
@@ -118,9 +119,10 @@ export function ExportButtons({
         scheduleStatusReset();
       } catch (err) {
         // Network / unexpected failure — never swallow silently (Rules.md §6).
-        console.error("export download failed", {
+        logError("export download failed", {
+          op: "ExportButtons",
           format: target.format,
-          message: err instanceof Error ? err.message : "unknown error",
+          ...errorContext(err),
         });
         if (!mounted.current) return;
         setStatus("");

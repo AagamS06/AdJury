@@ -5,6 +5,7 @@ import { serverClient } from "@/lib/db/supabase";
 import { provisionCompanyForNewUser } from "./provisioning";
 import { credentialsSchema, firstIssue, signUpSchema } from "./schema";
 import { createServerSupabase } from "./supabase-server";
+import { logError, errorContext } from "@/lib/observability/logger";
 
 /**
  * Auth server actions (DailyPlan Day 3) — login, signup (+ company/admin
@@ -74,10 +75,10 @@ export async function signUpAction(
       companyName,
     });
   } catch (err) {
-    console.error("signup provisioning failed", {
+    logError("signup provisioning failed", {
       op: "signUpAction",
       userId: data.user.id,
-      message: err instanceof Error ? err.message : "unknown error",
+      ...errorContext(err),
     });
     await admin.auth.admin.deleteUser(data.user.id).catch(() => {
       // Best-effort cleanup; nothing more we can safely do here.

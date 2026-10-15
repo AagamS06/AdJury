@@ -25,6 +25,7 @@ import type { SessionContext } from "@/lib/auth/session";
 import type { BrandProfileRow } from "@/types/db";
 import { BrandProfileSchema, firstBrandProfileIssue } from "./brand-profile";
 import { computeBrandCache } from "./brand-summary";
+import { logError, errorContext } from "@/lib/observability/logger";
 
 export type SaveBrandProfileResult =
   | { ok: true; status: 200; profile: BrandProfileRow; created: boolean }
@@ -119,10 +120,10 @@ function failure(
   err: unknown,
 ): SaveBrandProfileResult {
   // Redacted log; plain user message (Rules.md §6) — never log the guide text.
-  console.error("brand profile save failed", {
+  logError("brand profile save failed", {
     op,
     companyId,
-    message: err instanceof Error ? err.message : "unknown error",
+    ...errorContext(err),
   });
   return {
     ok: false,

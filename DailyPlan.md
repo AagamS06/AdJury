@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-10-14 (Day 47 — abuse protections: read-endpoint rate limiter + abuse-surface audit; limits enforced consistently end-to-end)
+> **Status:** Active · **Last updated:** 2026-10-15 (Day 48 — observability: a redacting structured logger + an error-monitoring hook seam, with every failure log migrated onto it and a logging audit proving no raw console.* leaks content/secrets)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -246,8 +246,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Review rate limits + basic abuse safeguards end-to-end. **Completed 2026-10-14.**
 - DoD: limits enforced consistently.
 
-### Day 48 — Observability
-- [ ] Redacted structured logging + error-monitoring hooks.
+### Day 48 — Observability ✅
+- [x] Redacted structured logging + error-monitoring hooks. **Completed 2026-10-15.**
 - DoD: errors traceable without leaking content/secrets.
 
 ### Day 49 — Week 7 hardening

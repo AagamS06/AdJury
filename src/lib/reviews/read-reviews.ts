@@ -26,6 +26,7 @@ import type {
   ReviewRow,
   ReviewWithScores,
 } from "@/types/db";
+import { logError, errorContext } from "@/lib/observability/logger";
 
 /**
  * A review reconstructed from stored rows for the scorecard UI. Mirrors the
@@ -154,11 +155,11 @@ export async function getReviewForCompany(
   try {
     data = await deps.fetch(id, deps.session.companyId);
   } catch (err) {
-    console.error("review fetch failed", {
+    logError("review fetch failed", {
       op: "getReviewForCompany",
       companyId: deps.session.companyId,
       reviewId: id,
-      message: err instanceof Error ? err.message : "unknown error",
+      ...errorContext(err),
     });
     return {
       ok: false,
@@ -211,10 +212,10 @@ export async function listReviewsForCompany(
   try {
     rows = await deps.list(deps.session.companyId, { limit });
   } catch (err) {
-    console.error("review list failed", {
+    logError("review list failed", {
       op: "listReviewsForCompany",
       companyId: deps.session.companyId,
-      message: err instanceof Error ? err.message : "unknown error",
+      ...errorContext(err),
     });
     return {
       ok: false,

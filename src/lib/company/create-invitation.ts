@@ -22,6 +22,7 @@ import {
   hashInviteToken,
   inviteExpiresAt,
 } from "./invitations";
+import { logError, errorContext } from "@/lib/observability/logger";
 
 export type CreateInvitationResult =
   | {
@@ -118,10 +119,10 @@ function failure(
   err: unknown,
 ): CreateInvitationResult {
   // Redacted log; plain user message (Rules.md §6).
-  console.error("invitation create failed", {
+  logError("invitation create failed", {
     op,
     companyId,
-    message: err instanceof Error ? err.message : "unknown error",
+    ...errorContext(err),
   });
   return {
     ok: false,

@@ -21,6 +21,7 @@ import type { SessionContext } from "@/lib/auth/session";
 import type { AnalyticsQueryOptions } from "@/lib/db/queries";
 import { PERSONA_NAMES, type PersonaName, type Verdict } from "@/lib/schema/juror";
 import type { ReviewWithScores } from "@/types/db";
+import { logError, errorContext } from "@/lib/observability/logger";
 
 /** Time-bucket granularity for a trend series. */
 export type TrendGranularity = "day" | "week" | "month";
@@ -338,10 +339,10 @@ export async function getCompanyAnalytics(
       sinceIso: deps.sinceIso,
     });
   } catch (err) {
-    console.error("analytics fetch failed", {
+    logError("analytics fetch failed", {
       op: "getCompanyAnalytics",
       companyId: deps.session.companyId,
-      message: err instanceof Error ? err.message : "unknown error",
+      ...errorContext(err),
     });
     return {
       ok: false,

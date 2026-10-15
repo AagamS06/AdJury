@@ -38,11 +38,16 @@
  */
 import type { SessionContext } from "@/lib/auth/session";
 import {
+  composeRateLimitMessage,
   evaluateRateLimit,
+  rateLimitHeaders,
   type RateLimitDecision,
   type RateLimitPolicy,
-  type RateLimitUsage,
 } from "@/lib/rate-limit";
+import {
+  createInMemorySlidingWindowStore,
+  type SlidingWindowStore,
+} from "@/lib/security/rate-limit-store";
 import type { PlanTier } from "@/types/db";
 
 /** One hour in milliseconds — the export rate-limit window. */
@@ -73,60 +78,16 @@ export function resolveExportRateLimitPolicy(
 }
 
 /**
- * Per-company export usage store. Records the timestamps (ms) of allowed exports
- * and reports usage within a rolling window. Injected into `checkExportRateLimit`
- * so the decision logic stays testable without shared global state, and so a
- * durable backend can replace the default in-memory one without touching routes.
+ * Per-company export usage store. Keyed by company id, this is the shared generic
+ * sliding-window store (Day 47) — the export and read limiters now use the *same*
+ * implementation (`SlidingWindowStore`) so they can't drift. Kept as a named type
+ * alias + factory re-export for a stable surface (Day 40 callers/tests are
+ * unchanged).
  */
-export interface ExportRateStore {
-  /**
-   * Prior allowed exports for the company within [`windowStartMs`, now]. Prunes
-   * entries older than `windowStartMs`. Does NOT record the current request — the
-   * caller records only if the request is allowed, so a blocked request never
-   * consumes a slot or extends the window.
-   */
-  peek(companyId: string, windowStartMs: number): RateLimitUsage;
-  /** Record one allowed export for the company at `nowMs`. */
-  record(companyId: string, nowMs: number): void;
-}
+export type ExportRateStore = SlidingWindowStore;
 
-/**
- * In-memory sliding-window store. Best-effort and per-instance (see the module
- * doc) — a single `Map<companyId, number[]>` of ascending timestamps, pruned on
- * every access so it can't grow without bound.
- */
-export function createInMemoryExportRateStore(): ExportRateStore {
-  const hits = new Map<string, number[]>();
-
-  function prune(companyId: string, windowStartMs: number): number[] {
-    const all = hits.get(companyId);
-    if (!all || all.length === 0) return [];
-    // Timestamps are appended in time order, so the kept tail is contiguous.
-    const kept = all.filter((ts) => ts >= windowStartMs);
-    if (kept.length === 0) {
-      hits.delete(companyId);
-    } else if (kept.length !== all.length) {
-      hits.set(companyId, kept);
-    }
-    return kept;
-  }
-
-  return {
-    peek(companyId, windowStartMs) {
-      const kept = prune(companyId, windowStartMs);
-      return { count: kept.length, oldest: isoOrNull(kept[0]) };
-    },
-    record(companyId, nowMs) {
-      const existing = hits.get(companyId) ?? [];
-      existing.push(nowMs);
-      hits.set(companyId, existing);
-    },
-  };
-}
-
-function isoOrNull(ms: number | undefined): string | null {
-  return ms === undefined ? null : new Date(ms).toISOString();
-}
+/** Factory for an in-memory export store (aliases the shared generic store). */
+export const createInMemoryExportRateStore = createInMemorySlidingWindowStore;
 
 /**
  * Process-wide default store. Export routes share this instance so a company's
@@ -183,33 +144,20 @@ export function checkExportRateLimit(
  * window wording tracks `EXPORT_RATE_LIMITS` (one hour).
  */
 export function exportRateLimitMessage(decision: RateLimitDecision): string {
-  const base = `You've reached your plan's export limit (${decision.limit} per hour).`;
-  if (decision.retryAfterSeconds && decision.retryAfterSeconds > 0) {
-    const minutes = Math.ceil(decision.retryAfterSeconds / 60);
-    const when =
-      minutes >= 60
-        ? `about ${Math.ceil(minutes / 60)} hour(s)`
-        : `about ${minutes} minute(s)`;
-    return `${base} Please try again in ${when}, or upgrade your plan for a higher limit.`;
-  }
-  return `${base} Please try again later, or upgrade your plan for a higher limit.`;
+  return composeRateLimitMessage(
+    `You've reached your plan's export limit (${decision.limit} per hour).`,
+    decision,
+  );
 }
 
 /**
  * Standard rate-limit response headers for a decision (Rules.md §6 — surface the
- * limit + reset info). Returned as a plain record so the framework-agnostic lib
- * stays free of `next/server`; the route spreads it into the response.
+ * limit + reset info). Delegates to the shared `rateLimitHeaders` so the header
+ * shape is identical across every limiter; kept as a named export for a stable
+ * route surface.
  */
 export function exportRateLimitHeaders(
   decision: RateLimitDecision,
 ): Record<string, string> {
-  const headers: Record<string, string> = {
-    "X-RateLimit-Limit": String(decision.limit),
-    "X-RateLimit-Remaining": String(decision.remaining),
-  };
-  if (decision.resetAt) headers["X-RateLimit-Reset"] = decision.resetAt;
-  if (decision.retryAfterSeconds !== null) {
-    headers["Retry-After"] = String(decision.retryAfterSeconds);
-  }
-  return headers;
+  return rateLimitHeaders(decision);
 }

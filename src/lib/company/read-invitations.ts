@@ -11,6 +11,7 @@
  */
 import type { SessionContext } from "@/lib/auth/session";
 import type { InvitationRow } from "@/types/db";
+import { logError, errorContext } from "@/lib/observability/logger";
 
 export type GetInvitationsResult =
   | { ok: true; status: 200; invitations: InvitationRow[] }
@@ -40,10 +41,10 @@ export async function getInvitationsForCompany(
     const invitations = await deps.list(deps.session.companyId);
     return { ok: true, status: 200, invitations };
   } catch (err) {
-    console.error("invitation list failed", {
+    logError("invitation list failed", {
       op: "getInvitationsForCompany",
       companyId: deps.session.companyId,
-      message: err instanceof Error ? err.message : "unknown error",
+      ...errorContext(err),
     });
     return {
       ok: false,

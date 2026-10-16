@@ -8,6 +8,7 @@ import {
 import { getBrandProfileByCompany } from "@/lib/db/queries";
 import { BrandProfileForm } from "@/components/company/brand-profile-form";
 import type { BrandProfileRow } from "@/types/db";
+import { logError, errorContext } from "@/lib/observability/logger";
 
 /**
  * Brand profile — admin only (DailyPlan Day 26): create/edit the company's
@@ -33,10 +34,10 @@ export default async function BrandPage() {
     const db = await createServerSupabase();
     profile = await getBrandProfileByCompany(db, session.companyId);
   } catch (err) {
-    console.error("brand profile load failed", {
+    logError("brand profile load failed", {
       op: "BrandPage",
       companyId: session.companyId,
-      message: err instanceof Error ? err.message : "unknown error",
+      ...errorContext(err),
     });
     loadError = true;
   }

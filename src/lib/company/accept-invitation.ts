@@ -24,6 +24,7 @@ import type {
   UserRow,
 } from "@/types/db";
 import { invitationEmailMatches, invitationState } from "./invitations";
+import { logError, errorContext } from "@/lib/observability/logger";
 
 export type AcceptFailureReason =
   | "unauthenticated"
@@ -151,10 +152,10 @@ export async function acceptInvitation(
   try {
     await deps.markAccepted(invitation.id);
   } catch (err) {
-    console.error("invitation accept: mark-accepted failed", {
+    logError("invitation accept: mark-accepted failed", {
       op: "acceptInvitation/markAccepted",
       invitationId: invitation.id,
-      message: err instanceof Error ? err.message : "unknown error",
+      ...errorContext(err),
     });
   }
 
@@ -191,9 +192,9 @@ function notAcceptable(
 }
 
 function failure(op: string, err: unknown): AcceptInvitationResult {
-  console.error("invitation accept failed", {
+  logError("invitation accept failed", {
     op,
-    message: err instanceof Error ? err.message : "unknown error",
+    ...errorContext(err),
   });
   return {
     ok: false,

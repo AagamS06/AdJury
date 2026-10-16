@@ -10,6 +10,7 @@ import type { PersonaWeights } from "@/lib/schema/weights";
 import { getModelClient, type ModelClient } from "./client";
 import { PERSONAS, type Persona } from "./personas";
 import { platformGuidanceFor } from "./personas/platform-guidance";
+import { logError, logWarn } from "@/lib/observability/logger";
 import {
   callWithResilience,
   classifyModelError,
@@ -180,7 +181,7 @@ async function runPersona(
         {
           ...resilience,
           onRetry: (info) =>
-            console.warn("juror model call retry", {
+            logWarn("juror model call retry", {
               op: "runPersona",
               persona: persona.name,
               attempt: info.attempt,
@@ -204,7 +205,7 @@ async function runPersona(
 
   const reason = jurorErrorReason(lastError);
   // Redacted per-juror failure log (no content/secrets — Rules.md §3/§6).
-  console.error("juror failed", {
+  logError("juror failed", {
     op: "runPersona",
     persona: persona.name,
     reason,

@@ -47,6 +47,7 @@ import {
 } from "@/lib/schema/juror";
 import { resolveWeights } from "@/lib/scoring";
 import type { BrandProfileRow, ReviewWithScores } from "@/types/db";
+import { logError, errorContext } from "@/lib/observability/logger";
 
 export type CreateReviewResult =
   | { ok: true; status: 201; review: ReviewResult }
@@ -149,10 +150,10 @@ export async function createReview(
       brandContext = resolved.summary;
       brandSource = resolved.source;
     } catch (err) {
-      console.error("brand profile read failed (failing open)", {
+      logError("brand profile read failed (failing open)", {
         op: "createReview",
         companyId: deps.session.companyId,
-        message: err instanceof Error ? err.message : "unknown error",
+        ...errorContext(err),
       });
     }
   }
@@ -203,10 +204,10 @@ export async function createReview(
         };
       }
     } catch (err) {
-      console.error("rate-limit usage read failed (failing open)", {
+      logError("rate-limit usage read failed (failing open)", {
         op: "createReview",
         companyId: deps.session.companyId,
-        message: err instanceof Error ? err.message : "unknown error",
+        ...errorContext(err),
       });
     }
   }
@@ -256,11 +257,11 @@ export async function createReview(
   } catch (err) {
     // Don't report success on a write failure (Rules.md §6). Log with context
     // but never the user's content or any secret.
-    console.error("review persistence failed", {
+    logError("review persistence failed", {
       op: "createReview",
       companyId: deps.session.companyId,
       reviewId: review.review_id,
-      message: err instanceof Error ? err.message : "unknown error",
+      ...errorContext(err),
     });
     return {
       ok: false,

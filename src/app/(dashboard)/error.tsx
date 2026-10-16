@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { logError } from "@/lib/observability/logger";
 
 /**
  * Dashboard error boundary (DailyPlan Day 13 — states & resilience).
@@ -21,9 +22,11 @@ export default function DashboardError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log for observability; the message may carry internal detail, so it stays
-    // out of the UI. (Structured/redacted logging is hardened later — Day 48.)
-    console.error("Dashboard render error", {
+    // Log for observability through the redacting structured logger (Day 48);
+    // internal detail stays out of the UI (Rules.md §6). We log the error class
+    // + digest (both safe to surface) — the redactor would scrub anything
+    // content/secret-shaped if a future field carried it.
+    logError("Dashboard render error", {
       digest: error.digest,
       name: error.name,
     });

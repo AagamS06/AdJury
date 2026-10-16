@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { logError, errorContext } from "@/lib/observability/logger";
 
 /**
  * Copy-to-clipboard button (DailyPlan Day 15 — suggested-rewrite UX). A small
@@ -43,8 +44,9 @@ export function CopyButton({
       setState("copied");
     } catch (err) {
       // Never swallow silently (Rules.md §6); the text is still selectable.
-      console.error("copy to clipboard failed", {
-        message: err instanceof Error ? err.message : "unknown error",
+      logError("copy to clipboard failed", {
+        op: "CopyButton",
+        ...errorContext(err),
       });
       setState("error");
     }

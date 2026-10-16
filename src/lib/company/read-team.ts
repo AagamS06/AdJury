@@ -16,6 +16,7 @@
  */
 import type { SessionContext } from "@/lib/auth/session";
 import type { UserRow } from "@/types/db";
+import { logError, errorContext } from "@/lib/observability/logger";
 
 export type GetTeamResult =
   | { ok: true; status: 200; members: UserRow[] }
@@ -50,10 +51,10 @@ export async function getTeamForCompany(
   try {
     members = await deps.list(deps.session.companyId);
   } catch (err) {
-    console.error("team list failed", {
+    logError("team list failed", {
       op: "getTeamForCompany",
       companyId: deps.session.companyId,
-      message: err instanceof Error ? err.message : "unknown error",
+      ...errorContext(err),
     });
     return {
       ok: false,

@@ -21,6 +21,7 @@ import {
   firstRoleChangeIssue,
   wouldRemoveLastAdmin,
 } from "./role-management";
+import { logError, errorContext } from "@/lib/observability/logger";
 
 export type ChangeRoleResult =
   | { ok: true; status: 200; user: UserRow; changed: boolean }
@@ -117,10 +118,10 @@ function failure(
   err: unknown,
 ): ChangeRoleResult {
   // Redacted log; plain user message (Rules.md §6).
-  console.error("role change failed", {
+  logError("role change failed", {
     op,
     companyId,
-    message: err instanceof Error ? err.message : "unknown error",
+    ...errorContext(err),
   });
   return {
     ok: false,

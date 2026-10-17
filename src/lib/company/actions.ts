@@ -18,6 +18,7 @@ import {
   listUsersByCompany,
   markInvitationAccepted,
   updateBrandProfile,
+  updateCompanyPlanTier,
   updateUserRole,
 } from "@/lib/db/queries";
 import { serverClient } from "@/lib/db/supabase";
@@ -29,6 +30,8 @@ import { acceptInvitation } from "./accept-invitation";
 import { createInvitation } from "./create-invitation";
 import { saveBrandProfile } from "./save-brand-profile";
 import { changeMemberRole } from "./update-role";
+import { updateCompanySettings } from "./update-settings";
+import { planTierLabel } from "./onboarding";
 import { roleLabel } from "./team-view";
 import {
   hashInviteToken,
@@ -407,5 +410,48 @@ export async function changeMemberRoleAction(
   }
   return {
     notice: `${result.user.email} is now ${roleLabel(result.user.role).toLowerCase()}.`,
+  };
+}
+
+// ── company settings (DailyPlan Day 50) ────────────────────────────────────
+
+export interface CompanySettingsFormState {
+  error?: string;
+  /** Confirmation copy, set after a successful save. */
+  notice?: string;
+}
+
+/**
+ * Admin company-settings save action (DailyPlan Day 50). `requireAdmin()`
+ * re-derives the caller server-side (a member/anon caller is redirected), and the
+ * update core validates the input and writes under the service-role client
+ * (`companies` has no client write policy). The company id comes from the resolved
+ * session, never the form (Rules.md §5). On success `/settings` is revalidated so
+ * the page reflects the new plan (which also drives the review rate limit, Day 17).
+ */
+export async function updateCompanySettingsAction(
+  _prev: CompanySettingsFormState,
+  formData: FormData,
+): Promise<CompanySettingsFormState> {
+  const session = await requireAdmin();
+  const admin = serverClient();
+
+  const result = await updateCompanySettings({
+    session,
+    input: { plan_tier: field(formData, "plan_tier") },
+    update: ({ companyId, planTier }) =>
+      updateCompanyPlanTier(admin, companyId, planTier),
+  });
+
+  if (!result.ok) return { error: result.error };
+
+  revalidatePath("/settings");
+  if (!result.changed) {
+    return {
+      notice: `You're already on the ${planTierLabel(result.company.plan_tier)} plan.`,
+    };
+  }
+  return {
+    notice: `Settings saved. You're now on the ${planTierLabel(result.company.plan_tier)} plan.`,
   };
 }

@@ -50,6 +50,7 @@ export default async function DashboardLayout({
             <NavLink href="/analytics">Analytics</NavLink>
             {isAdmin && <NavLink href="/brand">Brand</NavLink>}
             {isAdmin && <NavLink href="/team">Team</NavLink>}
+            {isAdmin && <NavLink href="/settings">Settings</NavLink>}
           </nav>
 
           <div className="flex items-center gap-3 text-sm">

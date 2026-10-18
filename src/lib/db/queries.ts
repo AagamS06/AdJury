@@ -99,6 +99,29 @@ export async function updateCompanyJurorWeights(
   return data as CompanyRow;
 }
 
+/**
+ * Set a company's plan tier (DailyPlan Day 50 — company settings). Tenancy is
+ * explicit and server-derived — `companyId` comes from the session, never the
+ * client (Rules.md §5) — and `planTier` is pre-validated by `CompanySettingsSchema`
+ * in the calling core (Rules.md §3). Runs under the service-role client because
+ * `companies` has no client write policy (writes are server-side, admin-gated),
+ * mirroring the Day 16 weights and Day 22 onboarding write paths.
+ */
+export async function updateCompanyPlanTier(
+  db: SupabaseClient,
+  companyId: string,
+  planTier: PlanTier,
+): Promise<CompanyRow> {
+  const { data, error } = await db
+    .from("companies")
+    .update({ plan_tier: planTier })
+    .eq("id", companyId)
+    .select("*")
+    .single();
+  if (error) fail("updateCompanyPlanTier", error);
+  return data as CompanyRow;
+}
+
 export interface CompleteOnboardingParams {
   name: string;
   industry: string;

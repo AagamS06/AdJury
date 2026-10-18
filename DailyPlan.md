@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-10-16 (Day 49 — Week 7 hardening: a week-end integration pass wiring the real Week-7 audit cores (RLS / authz / input / secrets / abuse / observability) over one on-disk snapshot, proving they pass together, their inventories agree, tenancy is defense-in-depth, the three limiters are one mechanism, and the content/secret boundary composes across input + logging; Week 7 complete)
+> **Status:** Active · **Last updated:** 2026-10-17 (Day 50 — Company settings: an admin-only `/settings` page with the plan-tier editor (the editable setting; drives the Day 17 review rate limit), a read-only company summary linking to onboarding, a link to the brand profile, and the danger-zone stubs (delete reviews / delete company) scaffolded as inert "coming soon" controls; Week 8 begins)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -258,8 +258,8 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 
 ## Week 8 — Dashboard & settings
 
-### Day 50 — Company settings
-- [ ] Company settings page (plan tier, brand link, danger zone stubs).
+### Day 50 — Company settings ✅
+- [x] Company settings page (plan tier, brand link, danger zone stubs). **Completed 2026-10-17.**
 - DoD: settings load and save (admin).
 
 ### Day 51 — User settings

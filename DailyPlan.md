@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-10-19 (Day 51 — User settings, Part 1/2 (basic): an `/account` page any signed-in user reaches, with an editable **display name** that saves + persists via the service-role write path (mirroring the Day 25 role change), email/role/company shown read-only; a new `display_name` column on `users` (migration 0010), `SessionContext.displayName`, an "Account" nav link for all users, and the pure profile contract + injectable update core. Part 2 (password/email/notification prefs — needs live Supabase Auth) is the planned follow-up.)
+> **Status:** Active · **Last updated:** 2026-10-19 (Day 51 — User settings, both parts shipped: an `/account` page any signed-in user reaches. **Part 1** — editable **display name** (migration 0010, `SessionContext.displayName`, "Account" nav link for all users). **Part 2** — **notification preferences** (migration 0011; review-complete/weekly-digest/product-news opt-ins, persisted via the same service-role self-edit path) and **password/email changes** (wired to Supabase Auth, validated at the boundary; the live Auth effect is credential-gated). All via pure contracts + injectable self-edit cores scoped to the session user's own id + company id. 808→841 tests.)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -265,7 +265,7 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 ### Day 51 — User settings ✅
 - [x] Profile/account settings for the current user. **Completed 2026-10-19.**
 - DoD: profile edits persist.
-> **Part 1 of 2 (basic):** an `/account` page any signed-in user reaches, with an editable **display name** that saves and persists (email/role/company shown read-only). The fuller account surface — password change, email change, notification preferences — is the planned **Part 2** follow-up (needs live Supabase Auth; see the PR's "Blocked / needs credentials").
+> Shipped in two PRs on the same day: **Part 1 (basic)** — an `/account` page any signed-in user reaches, with an editable **display name** that saves and persists. **Part 2 (full)** — adds **notification preferences** (review-complete / weekly-digest / product-news opt-ins, persisted) and the **password / email changes** (wired to Supabase Auth, validated at the boundary; the live Auth effect needs a real project — see the Part 2 PR's "Blocked / needs credentials"). Email/role/company remain read-only; role is managed by an admin on `/team`.
 
 ### Day 52 — Dashboard home
 - [ ] Landing dashboard: recent reviews, quick-submit, key metrics.

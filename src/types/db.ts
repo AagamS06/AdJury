@@ -58,7 +58,28 @@ export interface UserRow {
    * always carry it.
    */
   display_name?: string | null;
+  /**
+   * Notification preferences (Day 51, Part 2 — migration 0011). Optional for the
+   * same reason as `display_name`: fixtures and pre-migration rows omit them, and
+   * readers apply the documented defaults via `resolveNotificationPrefs`. New DB
+   * reads always carry them (they are NOT NULL in the schema).
+   */
+  notify_review_complete?: boolean;
+  notify_weekly_digest?: boolean;
+  notify_product_news?: boolean;
   created_at: string;
+}
+
+/**
+ * Resolved notification preferences (Day 51, Part 2). The nested shape the UI and
+ * the update core work with, mapped to/from the flat `notify_*` columns. Defaults
+ * (applied by `resolveNotificationPrefs` when a column is absent) match the
+ * migration: review-complete on, weekly digest off, product news on.
+ */
+export interface NotificationPreferences {
+  review_complete: boolean;
+  weekly_digest: boolean;
+  product_news: boolean;
 }
 
 export interface InvitationRow {

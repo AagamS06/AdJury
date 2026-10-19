@@ -22,6 +22,7 @@ import type {
   CompanyRow,
   ContentType,
   InvitationRow,
+  NotificationPreferences,
   PersonaScoreRow,
   PlanTier,
   ReviewRow,
@@ -271,6 +272,34 @@ export async function updateUserDisplayName(
     .select("*")
     .single();
   if (error) fail("updateUserDisplayName", error);
+  return data as UserRow;
+}
+
+/**
+ * Update a user's own notification preferences (DailyPlan Day 51, Part 2). Scoped
+ * by BOTH `id` and `company_id` (server-derived — Rules.md §5), the same
+ * defense-in-depth as `updateUserDisplayName`. Runs under the service-role client
+ * (`users` has no client write policy). The nested preference shape is flattened
+ * to the `notify_*` columns here; validation lives in `update-notifications.ts`.
+ */
+export async function updateUserNotificationPrefs(
+  db: SupabaseClient,
+  companyId: string,
+  userId: string,
+  prefs: NotificationPreferences,
+): Promise<UserRow> {
+  const { data, error } = await db
+    .from("users")
+    .update({
+      notify_review_complete: prefs.review_complete,
+      notify_weekly_digest: prefs.weekly_digest,
+      notify_product_news: prefs.product_news,
+    })
+    .eq("id", userId)
+    .eq("company_id", companyId)
+    .select("*")
+    .single();
+  if (error) fail("updateUserNotificationPrefs", error);
   return data as UserRow;
 }
 

@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-10-19 (Day 51 — User settings, both parts shipped: an `/account` page any signed-in user reaches. **Part 1** — editable **display name** (migration 0010, `SessionContext.displayName`, "Account" nav link for all users). **Part 2** — **notification preferences** (migration 0011; review-complete/weekly-digest/product-news opt-ins, persisted via the same service-role self-edit path) and **password/email changes** (wired to Supabase Auth, validated at the boundary; the live Auth effect is credential-gated). All via pure contracts + injectable self-edit cores scoped to the session user's own id + company id. 808→841 tests.)
+> **Status:** Active · **Last updated:** 2026-10-19 (Day 52 — Dashboard home: replaced the Day 4 placeholder with a real landing surface — three key-metric tiles (reviews run, average score, pass rate), a prominent quick-submit, recent reviews (reusing the Day 11 `HistoryList`), and shortcuts incl. admin-only management. Metrics from the Day 31 `getCompanyAnalytics` core, recent reviews from the Day 6 `listReviewsForCompany` core — both tenant-safe (session-derived company, RLS) with per-read error states; key-metric logic in a pure, node-tested `dashboard-view.ts` with honest empty states; added `loading.tsx`. 841→850 tests.)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -267,9 +267,10 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - DoD: profile edits persist.
 > Shipped in two PRs on the same day: **Part 1 (basic)** — an `/account` page any signed-in user reaches, with an editable **display name** that saves and persists. **Part 2 (full)** — adds **notification preferences** (review-complete / weekly-digest / product-news opt-ins, persisted) and the **password / email changes** (wired to Supabase Auth, validated at the boundary; the live Auth effect needs a real project — see the Part 2 PR's "Blocked / needs credentials"). Email/role/company remain read-only; role is managed by an admin on `/team`.
 
-### Day 52 — Dashboard home
-- [ ] Landing dashboard: recent reviews, quick-submit, key metrics.
+### Day 52 — Dashboard home ✅
+- [x] Landing dashboard: recent reviews, quick-submit, key metrics. **Completed 2026-10-19.**
 - DoD: dashboard summarizes company activity.
+> Replaced the Day 4 placeholder dashboard with a real landing surface: three key-metric tiles (reviews run, average score, pass rate), a prominent quick-submit, the most recent reviews (reusing the Day 11 `HistoryList`), and shortcuts into the rest of the app plus admin-only management. Metrics come from the Day 31 `getCompanyAnalytics` core and recent reviews from the Day 6 `listReviewsForCompany` core — both tenant-safe (session-derived company, RLS-guarded) with per-read plain-language error states. Key-metric logic lives in a pure, node-tested `dashboard-view.ts` (honest empty states: "—" and a null pass rate rather than a fabricated zero). Added a `loading.tsx` skeleton. 841→850 tests.
 
 ### Day 53 — Notifications
 - [ ] Toast/notification system for actions and errors.

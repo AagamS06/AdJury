@@ -50,6 +50,14 @@ export interface UserRow {
   company_id: string;
   email: string;
   role: UserRole;
+  /**
+   * The user's preferred display name (Day 51). Optional because it was added
+   * after the initial schema (migration 0010): rows created before it, and the
+   * existing test fixtures, legitimately omit it, and every reader treats a
+   * missing value as "not set" (null) and falls back to the email. New DB reads
+   * always carry it.
+   */
+  display_name?: string | null;
   created_at: string;
 }
 

@@ -57,3 +57,10 @@ export const MAX_USER_ID_CHARS = 64;
  * an absurdly large bearer value at the boundary so it never reaches the hash.
  */
 export const MAX_INVITE_TOKEN_CHARS = 256;
+
+/**
+ * Max length of a user's display name (DailyPlan Day 51 — user settings). A
+ * generous ceiling for a real name while bounding a free-text field that is
+ * persisted and shown in the app chrome, so a pasted essay can't land in it.
+ */
+export const MAX_DISPLAY_NAME_CHARS = 80;

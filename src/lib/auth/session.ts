@@ -19,6 +19,13 @@ export interface SessionContext {
   email: string;
   companyId: string;
   role: UserRole;
+  /**
+   * The user's preferred display name (Day 51), or null when not set. Optional
+   * so the many test fixtures that build a session inline needn't set it; the
+   * real session always resolves it from the `users` row. Readers fall back to
+   * the email when it is absent/null.
+   */
+  displayName?: string | null;
   company: CompanyRow;
 }
 
@@ -42,6 +49,7 @@ export async function getSessionContext(): Promise<SessionContext | null> {
     email: userRow.email,
     companyId: userRow.company_id,
     role: userRow.role,
+    displayName: userRow.display_name ?? null,
     company,
   };
 }

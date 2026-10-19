@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-10-17 (Day 50 — Company settings: an admin-only `/settings` page with the plan-tier editor (the editable setting; drives the Day 17 review rate limit), a read-only company summary linking to onboarding, a link to the brand profile, and the danger-zone stubs (delete reviews / delete company) scaffolded as inert "coming soon" controls; Week 8 begins)
+> **Status:** Active · **Last updated:** 2026-10-19 (Day 51 — User settings, Part 1/2 (basic): an `/account` page any signed-in user reaches, with an editable **display name** that saves + persists via the service-role write path (mirroring the Day 25 role change), email/role/company shown read-only; a new `display_name` column on `users` (migration 0010), `SessionContext.displayName`, an "Account" nav link for all users, and the pure profile contract + injectable update core. Part 2 (password/email/notification prefs — needs live Supabase Auth) is the planned follow-up.)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -262,9 +262,10 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - [x] Company settings page (plan tier, brand link, danger zone stubs). **Completed 2026-10-17.**
 - DoD: settings load and save (admin).
 
-### Day 51 — User settings
-- [ ] Profile/account settings for the current user.
+### Day 51 — User settings ✅
+- [x] Profile/account settings for the current user. **Completed 2026-10-19.**
 - DoD: profile edits persist.
+> **Part 1 of 2 (basic):** an `/account` page any signed-in user reaches, with an editable **display name** that saves and persists (email/role/company shown read-only). The fuller account surface — password change, email change, notification preferences — is the planned **Part 2** follow-up (needs live Supabase Auth; see the PR's "Blocked / needs credentials").
 
 ### Day 52 — Dashboard home
 - [ ] Landing dashboard: recent reviews, quick-submit, key metrics.

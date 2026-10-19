@@ -247,6 +247,33 @@ export async function updateUserRole(
   return data as UserRow;
 }
 
+/**
+ * Update a user's own profile — the display name (DailyPlan Day 51). Scoped by
+ * BOTH `id` and `company_id`, both server-derived (never the client — Rules.md
+ * §5), so a service-role write can never touch a user in another company even if
+ * handed a foreign id — the same defense-in-depth as `updateUserRole`. Runs
+ * under the service-role client because `users` has no client write policy
+ * (writes are server-side). The action only ever passes the session user's own
+ * id, so this is a self-edit; the validation lives in `update-profile.ts`,
+ * which hands in an already-normalized name (non-empty string, or null to clear).
+ */
+export async function updateUserDisplayName(
+  db: SupabaseClient,
+  companyId: string,
+  userId: string,
+  displayName: string | null,
+): Promise<UserRow> {
+  const { data, error } = await db
+    .from("users")
+    .update({ display_name: displayName })
+    .eq("id", userId)
+    .eq("company_id", companyId)
+    .select("*")
+    .single();
+  if (error) fail("updateUserDisplayName", error);
+  return data as UserRow;
+}
+
 export interface InsertUserParams {
   /** Must match an existing auth.users id (users.id references auth.users). */
   id: string;

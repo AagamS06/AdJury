@@ -14,6 +14,8 @@ import {
 } from "@/lib/reviews/review-form";
 import type { ReviewResult } from "@/lib/schema/juror";
 import { Scorecard } from "@/components/review/scorecard";
+import { useToast } from "@/components/ui/toast";
+import { formatAggregate, verdictLabel } from "@/lib/reviews/scorecard-view";
 
 /** Read an uploaded image file into a base64 `data:` URL + its MIME type. */
 function readImageFile(
@@ -52,6 +54,7 @@ const EMPTY_FIELDS: ReviewFormFields = {
 };
 
 export function ReviewForm() {
+  const { notify } = useToast();
   const baseId = useId();
   const fieldId = (name: string) => `${baseId}-${name}`;
   const errorId = (name: string) => `${baseId}-${name}-error`;
@@ -97,8 +100,18 @@ export function ReviewForm() {
     if (outcome.ok) {
       setResult(outcome.review);
       setSubmittedContent(validation.data.content_text);
+      // App-wide confirmation (Day 53): the scorecard renders below, but a toast
+      // announces completion + the headline verdict without the user scrolling.
+      notify({
+        tone: "success",
+        title: "Review complete",
+        message: `Verdict: ${verdictLabel(outcome.review.verdict)} · Score ${formatAggregate(outcome.review.aggregate_score)}`,
+      });
     } else {
       setFormError(outcome.message);
+      // The inline form error stays for correction; the toast surfaces the
+      // failure app-wide (Rules.md §6 — a clear, actionable message).
+      notify({ tone: "error", title: "Review failed", message: outcome.message });
     }
   }
 

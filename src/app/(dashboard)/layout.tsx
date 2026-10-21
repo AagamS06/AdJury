@@ -1,11 +1,11 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { PrimaryNav } from "@/components/ui/primary-nav";
 import { signOutAction } from "@/lib/auth/actions";
 import { requireSession } from "@/lib/auth/guard";
 import { needsOnboarding } from "@/lib/company/onboarding";
 
 /**
- * Dashboard shell (DailyPlan Day 4 — role-based access).
+ * Dashboard shell (DailyPlan Day 4 — role-based access; Day 54 — nav/IA).
  *
  * Gates the entire `(dashboard)` route group: `requireSession()` redirects any
  * unauthenticated caller to `/login` before a protected page renders (this is
@@ -13,6 +13,10 @@ import { needsOnboarding } from "@/lib/company/onboarding";
  * Admin-only surfaces (brand, team) additionally call `requireAdmin()` in their
  * own page, so a member who reaches this layout still cannot see them — and the
  * nav only shows those links to admins.
+ *
+ * The primary nav itself is the `PrimaryNav` client island (Day 54): its
+ * structure and active-route logic live in the pure `lib/ui/nav.ts` core, so the
+ * shell stays a server component while the nav can highlight the current page.
  */
 export default async function DashboardLayout({
   children,
@@ -33,26 +37,8 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-canvas">
       <header className="border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
-          <nav
-            aria-label="Primary"
-            className="flex items-center gap-1 text-sm font-medium"
-          >
-            <Link
-              href="/dashboard"
-              className="rounded-sm px-2 py-1.5 font-semibold uppercase tracking-wide text-royal hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-bright"
-            >
-              AdJury
-            </Link>
-            <NavLink href="/dashboard">Dashboard</NavLink>
-            <NavLink href="/review">New review</NavLink>
-            <NavLink href="/history">History</NavLink>
-            <NavLink href="/analytics">Analytics</NavLink>
-            {isAdmin && <NavLink href="/brand">Brand</NavLink>}
-            {isAdmin && <NavLink href="/team">Team</NavLink>}
-            {isAdmin && <NavLink href="/settings">Settings</NavLink>}
-            <NavLink href="/account">Account</NavLink>
-          </nav>
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-3">
+          <PrimaryNav role={session.role} />
 
           <div className="flex items-center gap-3 text-sm">
             <span className="hidden text-muted sm:inline">
@@ -75,16 +61,5 @@ export default async function DashboardLayout({
 
       <main className="mx-auto max-w-5xl px-6 py-10">{children}</main>
     </div>
-  );
-}
-
-function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="rounded-sm px-2 py-1.5 text-body hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-bright"
-    >
-      {children}
-    </Link>
   );
 }

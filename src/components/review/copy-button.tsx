@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { logError, errorContext } from "@/lib/observability/logger";
+import { useToast } from "@/components/ui/toast";
 
 /**
  * Copy-to-clipboard button (DailyPlan Day 15 — suggested-rewrite UX). A small
@@ -9,9 +10,11 @@ import { logError, errorContext } from "@/lib/observability/logger";
  * can lift a juror's suggested rewrite in one click.
  *
  * Accessibility (Design.md §6): the button has a persistent accessible name and
- * an adjacent `aria-live="polite"` region announces "Copied" without moving
- * focus. If the Clipboard API is unavailable or rejects, it fails quietly to a
- * short "Copy failed" hint (Rules.md §6 — no silent swallow, no crash) so the
+ * the outcome is announced through the app-wide toast layer (Day 53) — a polite
+ * "Copied to clipboard" or an assertive "Copy failed" — so feedback is
+ * consistent with the rest of the app and no bespoke live region is needed here.
+ * If the Clipboard API is unavailable or rejects, it fails to a short "Copy
+ * failed" label + toast (Rules.md §6 — no silent swallow, no crash) and the
  * rewrite text stays selectable by hand.
  */
 
@@ -24,6 +27,7 @@ export function CopyButton({
   value: string;
   label?: string;
 }) {
+  const { notify } = useToast();
   const [state, setState] = useState<CopyState>("idle");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -42,6 +46,7 @@ export function CopyButton({
       }
       await navigator.clipboard.writeText(value);
       setState("copied");
+      notify({ tone: "success", title: "Copied to clipboard" });
     } catch (err) {
       // Never swallow silently (Rules.md §6); the text is still selectable.
       logError("copy to clipboard failed", {
@@ -49,16 +54,14 @@ export function CopyButton({
         ...errorContext(err),
       });
       setState("error");
+      notify({
+        tone: "error",
+        title: "Copy failed",
+        message: "Select the text to copy it manually.",
+      });
     }
     timer.current = setTimeout(() => setState("idle"), 2000);
-  }, [value]);
-
-  const status =
-    state === "copied"
-      ? "Copied to clipboard"
-      : state === "error"
-        ? "Copy failed — select the text to copy it manually"
-        : "";
+  }, [value, notify]);
 
   return (
     <span className="inline-flex items-center gap-2">
@@ -69,9 +72,6 @@ export function CopyButton({
       >
         {state === "copied" ? "Copied" : state === "error" ? "Copy failed" : label}
       </button>
-      <span role="status" aria-live="polite" className="sr-only">
-        {status}
-      </span>
     </span>
   );
 }

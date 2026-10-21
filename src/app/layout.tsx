@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ToastProvider } from "@/components/ui/toast";
 
 export const metadata: Metadata = {
   title: "AdJury — AI content critique",
@@ -14,7 +15,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {/* App-wide toast/notification layer (DailyPlan Day 53) — mounted once
+            so every client surface can raise feedback via `useToast()`. */}
+        <ToastProvider>{children}</ToastProvider>
+      </body>
     </html>
   );
 }

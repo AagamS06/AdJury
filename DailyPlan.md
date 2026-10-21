@@ -1,6 +1,6 @@
 # AdJury — Day-by-Day Plan (7-day weeks × 12 weeks)
 
-> **Status:** Active · **Last updated:** 2026-10-19 (Day 52 — Dashboard home: replaced the Day 4 placeholder with a real landing surface — three key-metric tiles (reviews run, average score, pass rate), a prominent quick-submit, recent reviews (reusing the Day 11 `HistoryList`), and shortcuts incl. admin-only management. Metrics from the Day 31 `getCompanyAnalytics` core, recent reviews from the Day 6 `listReviewsForCompany` core — both tenant-safe (session-derived company, RLS) with per-read error states; key-metric logic in a pure, node-tested `dashboard-view.ts` with honest empty states; added `loading.tsx`. 841→850 tests.)
+> **Status:** Active · **Last updated:** 2026-10-20 (Day 53 — Notifications: an app-wide toast layer for action/error feedback — a pure, node-tested `src/lib/ui/toast.ts` (tone→label/ARIA/live mapping, per-tone auto-dismiss, dedupe, 4-toast cap) behind a thin `ToastProvider`/`useToast()` island mounted in the root layout; tones carry a text badge (never colour-only), errors announce assertively, hover/focus pauses dismissal, enter motion respects `prefers-reduced-motion`; wired the review-submit and copy-rewrite surfaces through it. 850→868 tests.)
 > The 12-week build ([Phases.md](Phases.md)) broken into **84 daily tasks (7 days/week)**, plus a Week 13 buffer. This is the source of truth for the **daily 4:30am routine**, which executes exactly **one** unchecked day per run and opens a PR.
 
 ## How the daily routine uses this file
@@ -272,9 +272,10 @@ Legend: `- [x]` done · `- [ ]` pending. "DoD" = done when.
 - DoD: dashboard summarizes company activity.
 > Replaced the Day 4 placeholder dashboard with a real landing surface: three key-metric tiles (reviews run, average score, pass rate), a prominent quick-submit, the most recent reviews (reusing the Day 11 `HistoryList`), and shortcuts into the rest of the app plus admin-only management. Metrics come from the Day 31 `getCompanyAnalytics` core and recent reviews from the Day 6 `listReviewsForCompany` core — both tenant-safe (session-derived company, RLS-guarded) with per-read plain-language error states. Key-metric logic lives in a pure, node-tested `dashboard-view.ts` (honest empty states: "—" and a null pass rate rather than a fabricated zero). Added a `loading.tsx` skeleton. 841→850 tests.
 
-### Day 53 — Notifications
-- [ ] Toast/notification system for actions and errors.
+### Day 53 — Notifications ✅
+- [x] Toast/notification system for actions and errors. **Completed 2026-10-20.**
 - DoD: consistent feedback across the app.
+> Added an app-wide toast/notification layer. Logic lives in a pure, node-tested `src/lib/ui/toast.ts` (tone→label/ARIA-role/live-region mapping, per-tone auto-dismiss windows, identical-toast dedupe, and a 4-toast visible cap that drops the oldest); the thin client island (`src/components/ui/toast.tsx`: `ToastProvider` + `useToast()` + the bottom-anchored viewport) is mounted once in the **root layout** so every surface can raise feedback. Tones carry a **text badge** (never colour-only, Design.md §6), errors announce assertively (`role="alert"`) and confirmations politely (`role="status"`), hover/focus pauses auto-dismiss, and the enter motion is gated on `prefers-reduced-motion`. Wired the client-action surfaces through it: the review submit (success verdict + failure), copy-rewrite, replacing their bespoke transient feedback; inline field/form validation stays where it belongs. 850→868 tests.
 
 ### Day 54 — Navigation/IA
 - [ ] Clean up nav and information architecture.

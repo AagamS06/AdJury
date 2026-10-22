@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth/guard";
 import { OnboardingForm } from "@/components/company/onboarding-form";
+import { MAIN_CONTENT_ID } from "@/lib/ui/a11y";
 
 /**
  * First-admin company onboarding (DailyPlan Day 22).
@@ -16,7 +17,10 @@ export default async function OnboardingPage() {
   const { company } = session;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-canvas px-4 py-12">
+    <main
+      id={MAIN_CONTENT_ID}
+      className="flex min-h-screen items-center justify-center bg-canvas px-4 py-12"
+    >
       <OnboardingForm
         companyName={company.name}
         industry={company.industry}

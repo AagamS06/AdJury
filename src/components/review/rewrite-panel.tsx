@@ -73,7 +73,7 @@ export function RewritePanel({
                   removed
                 </span>{" "}
                 ·{" "}
-                <span className="rounded-sm bg-success/10 px-1 text-success">
+                <span className="rounded-sm bg-success/10 px-1 text-success-deep">
                   added
                 </span>
               </p>
@@ -118,7 +118,7 @@ function DiffBlock({
           }
           if (mode === "after" && seg.type === "added") {
             return (
-              <span key={i} className="rounded-sm bg-success/10 text-success">
+              <span key={i} className="rounded-sm bg-success/10 text-success-deep">
                 <span className="sr-only"> added: </span>
                 {seg.value}
               </span>

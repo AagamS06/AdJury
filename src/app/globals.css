@@ -20,6 +20,7 @@
   --text-muted: #667085;
 
   --success: #15803d;
+  --success-deep: #166534; /* Day 55 — AA-compliant text on the success tint */
   --warning: #b45309;
   --warning-deep: #9a3412; /* Design.md §5 — distinct 3–4 score tier */
   --danger: #b91c1c;

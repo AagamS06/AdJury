@@ -57,7 +57,7 @@ export default async function BrandPage() {
         <span
           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
             configured
-              ? "bg-success/10 text-success"
+              ? "bg-success/10 text-success-deep"
               : "bg-canvas text-muted"
           }`}
         >

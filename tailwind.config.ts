@@ -18,7 +18,7 @@ const config: Config = {
         border: "#E4E7EC",
         muted: "#667085",
         body: "#344054",
-        success: "#15803D",
+        success: { DEFAULT: "#15803D", deep: "#166534" },
         warning: { DEFAULT: "#B45309", deep: "#9A3412" },
         danger: "#B91C1C",
       },

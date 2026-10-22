@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { PrimaryNav } from "@/components/ui/primary-nav";
+import { MAIN_CONTENT_ID } from "@/lib/ui/a11y";
 import { signOutAction } from "@/lib/auth/actions";
 import { requireSession } from "@/lib/auth/guard";
 import { needsOnboarding } from "@/lib/company/onboarding";
@@ -59,7 +60,9 @@ export default async function DashboardLayout({
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-10">{children}</main>
+      <main id={MAIN_CONTENT_ID} className="mx-auto max-w-5xl px-6 py-10">
+        {children}
+      </main>
     </div>
   );
 }

@@ -14,8 +14,8 @@ import type { InvitationRow } from "@/types/db";
  */
 const STATE_BADGE: Record<InvitationState, string> = {
   pending: "bg-royal/10 text-royal ring-1 ring-royal/30",
-  expired: "bg-warning/10 text-warning ring-1 ring-warning/30",
-  accepted: "bg-success/10 text-success ring-1 ring-success/30",
+  expired: "bg-warning/10 text-warning-deep ring-1 ring-warning/30",
+  accepted: "bg-success/10 text-success-deep ring-1 ring-success/30",
   revoked: "bg-canvas text-muted ring-1 ring-border",
 };
 

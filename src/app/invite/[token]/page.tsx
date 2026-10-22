@@ -17,6 +17,7 @@ import {
   type InvitationState,
 } from "@/lib/company/invitations";
 import { roleLabel } from "@/lib/company/team-view";
+import { MAIN_CONTENT_ID } from "@/lib/ui/a11y";
 import type { InvitationRow } from "@/types/db";
 
 /**
@@ -67,7 +68,10 @@ export default async function InvitePage({
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-canvas px-4 py-12">
+    <main
+      id={MAIN_CONTENT_ID}
+      className="flex min-h-screen items-center justify-center bg-canvas px-4 py-12"
+    >
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
           <Link
@@ -225,7 +229,7 @@ function Message({
   const classes =
     tone === "danger"
       ? "border-danger/30 bg-danger/10 text-danger"
-      : "border-warning/30 bg-warning/10 text-warning";
+      : "border-warning/30 bg-warning/10 text-warning-deep";
   return (
     <p
       role="alert"

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PERSONAS } from "@/lib/ai/personas";
 import { signOutAction } from "@/lib/auth/actions";
 import { getSessionContext, type SessionContext } from "@/lib/auth/session";
+import { MAIN_CONTENT_ID } from "@/lib/ui/a11y";
 
 /**
  * Landing page. Reads the server session so it reflects a persisted login and
@@ -18,7 +19,7 @@ export default async function Home() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-20">
+    <main id={MAIN_CONTENT_ID} className="mx-auto max-w-3xl px-6 py-20">
       <div className="mb-10 flex items-center justify-between gap-4">
         <p className="text-sm font-semibold uppercase tracking-wide text-royal">
           AdJury

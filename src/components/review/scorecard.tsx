@@ -129,6 +129,6 @@ export function Scorecard({
  * the colour with the message text (Design.md §6).
  */
 const NOTICE_CLASSES: Record<"warning" | "danger", string> = {
-  warning: "border-warning/30 bg-warning/10 text-warning",
+  warning: "border-warning/30 bg-warning/10 text-warning-deep",
   danger: "border-danger/30 bg-danger/10 text-danger",
 };

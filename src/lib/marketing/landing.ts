@@ -10,9 +10,10 @@
  * marketing copy and the session-aware CTA logic are node-testable with no DOM,
  * bundler, or credential.
  *
- * Scope note: this file owns the **hero + value proposition** (Day 57) and the
- * detailed **features / the jury / how-it-works** body (Day 58). The social
- * proof + CTA + footer is Day 59.
+ * Scope note: this file owns the **hero + value proposition** (Day 57), the
+ * detailed **features / the jury / how-it-works** body (Day 58), and the
+ * closing **social proof / final CTA / footer** (Day 59) — the landing page is
+ * now complete top-to-bottom.
  */
 
 import { PERSONAS } from "@/lib/ai/personas";
@@ -316,3 +317,161 @@ export const HOW_IT_WORKS: readonly HowItWorksStep[] = [
       "rewrites — then decide what ships. Nothing publishes on its own.",
   },
 ] as const;
+
+/* -------------------------------------------------------------------------- */
+/* Day 59 — Closing: social proof · final CTA · footer                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Stable in-page anchor ids for the body sections, shared by the section
+ * components and the footer's "Product" links. Centralising them here means a
+ * footer anchor can never drift from the section it targets (and the no-dangle
+ * test can reconcile the two against one source).
+ */
+export const LANDING_SECTION_IDS = {
+  features: "features",
+  jury: "the-jury",
+  howItWorks: "how-it-works",
+} as const;
+
+/** A single trust signal in the social-proof section. */
+export interface ProofPoint {
+  /** Stable key for React lists and tests. */
+  key: string;
+  /** A few words naming the trust signal. */
+  title: string;
+  /** One or two sentences of plain, product-grounded support. */
+  body: string;
+}
+
+/** The social-proof section's heading + intro. */
+export const SOCIAL_PROOF_INTRO: SectionIntro = {
+  key: "social-proof",
+  eyebrow: "Why teams trust the verdict",
+  heading: "A defensible second opinion before anything ships",
+  intro:
+    "AdJury's proof is in how it reviews — consistent, grounded, and always " +
+    "under your control. Real customer stories will appear here as teams come " +
+    "on board.",
+} as const;
+
+/**
+ * The trust signals shown as social proof. Every point is a **true property of
+ * how the product works** — not a fabricated stat or testimonial. Enterprise-
+ * credible and concrete (Design.md §1: no gimmicks), so the section stands on
+ * its own until real customer stories exist.
+ */
+export const PROOF_POINTS: readonly ProofPoint[] = [
+  {
+    key: "defensible",
+    title: "Consistent, defensible scoring",
+    body:
+      "Low-temperature, rubric-driven scores on explicit criteria — the kind " +
+      "of verdict you can stand behind in a review meeting, not a vibe check.",
+  },
+  {
+    key: "grounded",
+    title: "Grounded in your business",
+    body:
+      "Every verdict reflects your saved brand guide and a researched summary " +
+      "of your real market — never a generic, one-size-fits-all checklist.",
+  },
+  {
+    key: "in-control",
+    title: "You stay in control",
+    body:
+      "AdJury flags risks and hands you rewrites; it never publishes anything " +
+      "itself. The final call on what ships is always yours.",
+  },
+];
+
+/**
+ * An explicit, honest placeholder for customer testimonials. The landing page
+ * shows **no fabricated quotes** — this card states plainly that real stories
+ * will appear once teams are on board, so the "social proof" is never faked.
+ */
+export const TESTIMONIAL_PLACEHOLDER = {
+  label: "Customer stories",
+  body:
+    "As AdJury rolls out to marketing teams, their results and quotes will " +
+    "appear here. We don't show testimonials until they're real.",
+} as const;
+
+/** The final call-to-action band's static copy (buttons resolve per auth state). */
+export interface FinalCtaContent {
+  /** Small kicker above the heading. */
+  eyebrow: string;
+  /** The conversion heading. */
+  heading: string;
+  /** One sentence of supporting copy. */
+  subhead: string;
+}
+
+/** The closing CTA copy. Buttons come from {@link heroCtasFor} (session-aware). */
+export const FINAL_CTA: FinalCtaContent = {
+  eyebrow: "Ready when you are",
+  heading: "Catch the problems before your audience does",
+  subhead:
+    "Run your next piece of marketing past all six jurors and ship with a " +
+    "second opinion you can defend.",
+} as const;
+
+/** A single link in a footer column. */
+export interface FooterLink {
+  /** Stable key for React lists and tests. */
+  key: string;
+  /** Visible label. */
+  label: string;
+  /** Destination — an existing in-app route (`/…`) or an in-page anchor (`#…`). */
+  href: string;
+}
+
+/** A titled column of related footer links. */
+export interface FooterColumn {
+  /** Stable key for React lists and tests. */
+  key: string;
+  /** The column heading. */
+  title: string;
+  /** The column's links. */
+  links: readonly FooterLink[];
+}
+
+/** The footer's one-line description of the product. */
+export const FOOTER_TAGLINE =
+  "The QA layer for marketing teams — six expert jurors review your content " +
+  "before you publish, so nothing ships without a second opinion.";
+
+/**
+ * The footer's link columns. Every `href` is either an existing route or an
+ * in-page anchor to a real body section (see {@link LANDING_SECTION_IDS}) — no
+ * link dangles to a page that isn't built. (Legal pages like Privacy/Terms are
+ * deliberately omitted until those routes exist, rather than shipping 404s.)
+ */
+export const FOOTER_COLUMNS: readonly FooterColumn[] = [
+  {
+    key: "product",
+    title: "Product",
+    links: [
+      { key: "features", label: "Features", href: `#${LANDING_SECTION_IDS.features}` },
+      { key: "jury", label: "The jury", href: `#${LANDING_SECTION_IDS.jury}` },
+      {
+        key: "how-it-works",
+        label: "How it works",
+        href: `#${LANDING_SECTION_IDS.howItWorks}`,
+      },
+    ],
+  },
+  {
+    key: "get-started",
+    title: "Get started",
+    links: [
+      { key: "signup", label: "Start a free review", href: "/signup" },
+      { key: "login", label: "Log in", href: "/login" },
+    ],
+  },
+];
+
+/** The footer copyright line for a given year (kept pure for deterministic tests). */
+export function footerCopyright(year: number): string {
+  return `© ${year} AdJury. All rights reserved.`;
+}

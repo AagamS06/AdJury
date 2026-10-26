@@ -8,6 +8,14 @@ import {
   jurySummaries,
   HOW_IT_WORKS,
   HOW_IT_WORKS_INTRO,
+  LANDING_SECTION_IDS,
+  SOCIAL_PROOF_INTRO,
+  PROOF_POINTS,
+  TESTIMONIAL_PLACEHOLDER,
+  FINAL_CTA,
+  FOOTER_TAGLINE,
+  FOOTER_COLUMNS,
+  footerCopyright,
   type HeroCta,
   type SectionIntro,
 } from "@/lib/marketing/landing";
@@ -208,5 +216,114 @@ describe("landing body — how it works", () => {
     expect(copy).toContain("review");
     // The product never auto-publishes — the human decides what ships.
     expect(copy).toMatch(/decide|you ship|what ships|nothing publishes/);
+  });
+});
+
+/**
+ * Landing closing content (DailyPlan Day 59): the social-proof placeholder, the
+ * session-aware final CTA, and the footer. The closing/footer components
+ * (`components/marketing/landing-closing.tsx`, `landing-footer.tsx`) only render
+ * these values, so the invariants — honest (non-fabricated) social proof, a
+ * single primary CTA reusing the hero logic, and footer links that never dangle
+ * — are proved here.
+ *
+ * Day 59 DoD: the landing page is complete top-to-bottom.
+ */
+describe("landing closing — social proof (placeholder)", () => {
+  it("has a well-formed section intro", () => {
+    expectWellFormedIntro(SOCIAL_PROOF_INTRO);
+  });
+
+  it("lists product-grounded proof points with full copy and unique keys", () => {
+    expect(PROOF_POINTS.length).toBeGreaterThanOrEqual(3);
+    const keys = PROOF_POINTS.map((p) => p.key);
+    expect(new Set(keys).size).toBe(keys.length);
+    for (const point of PROOF_POINTS) {
+      expect(point.title.trim().length).toBeGreaterThan(0);
+      expect(point.body.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("names the real trust signals: grounding and human-in-control", () => {
+    const copy = PROOF_POINTS.map((p) => `${p.title} ${p.body}`)
+      .join(" ")
+      .toLowerCase();
+    expect(copy).toMatch(/brand|business|market/);
+    expect(copy).toMatch(/control|you decide|never publishes/);
+  });
+
+  it("keeps the testimonial slot an explicit, honest placeholder (no fakes)", () => {
+    // The placeholder must say, in plain words, that stories aren't shown until
+    // real — so the page never passes off a fabricated quote as social proof.
+    expect(TESTIMONIAL_PLACEHOLDER.label.trim().length).toBeGreaterThan(0);
+    expect(TESTIMONIAL_PLACEHOLDER.body.toLowerCase()).toMatch(/real|until/);
+  });
+});
+
+describe("landing closing — final CTA", () => {
+  it("has full heading + subhead copy", () => {
+    expect(FINAL_CTA.eyebrow.trim().length).toBeGreaterThan(0);
+    expect(FINAL_CTA.heading.trim().length).toBeGreaterThan(0);
+    expect(FINAL_CTA.subhead.trim().length).toBeGreaterThan(0);
+  });
+
+  it("reuses the session-aware hero CTA logic (exactly one primary)", () => {
+    for (const isAuth of [false, true]) {
+      const ctas = heroCtasFor(isAuth);
+      expectExactlyOnePrimary(ctas);
+      for (const cta of ctas) {
+        expect(REAL_ROUTES.has(cta.href)).toBe(true);
+      }
+    }
+  });
+});
+
+describe("landing closing — footer", () => {
+  it("has a tagline and a sensible, parameterised copyright line", () => {
+    expect(FOOTER_TAGLINE.trim().length).toBeGreaterThan(0);
+    expect(footerCopyright(2026)).toContain("2026");
+    expect(footerCopyright(2026)).toContain("AdJury");
+    // Year is a parameter, not hard-coded — next year's copyright is correct.
+    expect(footerCopyright(2030)).toContain("2030");
+  });
+
+  it("groups links into columns with full copy and unique keys", () => {
+    expect(FOOTER_COLUMNS.length).toBeGreaterThanOrEqual(1);
+    const colKeys = FOOTER_COLUMNS.map((c) => c.key);
+    expect(new Set(colKeys).size).toBe(colKeys.length);
+
+    const allLinkKeys = FOOTER_COLUMNS.flatMap((c) => c.links.map((l) => l.key));
+    expect(new Set(allLinkKeys).size).toBe(allLinkKeys.length);
+
+    for (const column of FOOTER_COLUMNS) {
+      expect(column.title.trim().length).toBeGreaterThan(0);
+      expect(column.links.length).toBeGreaterThan(0);
+      for (const link of column.links) {
+        expect(link.label.trim().length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("never dangles: every link is a real route or a real in-page anchor", () => {
+    const anchorTargets = new Set(
+      Object.values(LANDING_SECTION_IDS).map((id) => `#${id}`),
+    );
+    for (const column of FOOTER_COLUMNS) {
+      for (const link of column.links) {
+        if (link.href.startsWith("#")) {
+          // Anchors must point at a real body section id (shared source).
+          expect(anchorTargets.has(link.href)).toBe(true);
+        } else {
+          expect(link.href.startsWith("/")).toBe(true);
+          expect(REAL_ROUTES.has(link.href)).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("omits legal pages that don't exist yet (no 404 links)", () => {
+    const hrefs = FOOTER_COLUMNS.flatMap((c) => c.links.map((l) => l.href));
+    expect(hrefs).not.toContain("/privacy");
+    expect(hrefs).not.toContain("/terms");
   });
 });

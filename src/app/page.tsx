@@ -3,6 +3,8 @@ import { signOutAction } from "@/lib/auth/actions";
 import { getSessionContext, type SessionContext } from "@/lib/auth/session";
 import { LandingHero } from "@/components/marketing/landing-hero";
 import { LandingBody } from "@/components/marketing/landing-body";
+import { LandingClosing } from "@/components/marketing/landing-closing";
+import { LandingFooter } from "@/components/marketing/landing-footer";
 import { MAIN_CONTENT_ID } from "@/lib/ui/a11y";
 
 /**
@@ -14,7 +16,9 @@ import { MAIN_CONTENT_ID } from "@/lib/ui/a11y";
  * Day 57 (landing hero) replaces the Phase-1 scaffold top with a real,
  * session-aware hero + value proposition (`LandingHero`). Day 58 adds the
  * detailed body — features, the six jurors, and how-it-works (`LandingBody`).
- * The social proof / CTA / footer is Day 59.
+ * Day 59 completes the page with the social-proof placeholder + session-aware
+ * final CTA (`LandingClosing`) inside the main landmark, and the page `<footer>`
+ * (`LandingFooter`) as its own closing landmark.
  */
 export default async function Home() {
   let session: SessionContext | null = null;
@@ -25,8 +29,9 @@ export default async function Home() {
   }
 
   return (
-    <main id={MAIN_CONTENT_ID} className="pb-20">
-      <header className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 pt-8">
+    <>
+      <main id={MAIN_CONTENT_ID}>
+        <header className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 pt-8">
         <p className="text-sm font-semibold uppercase tracking-wide text-royal">
           AdJury
         </p>
@@ -36,7 +41,12 @@ export default async function Home() {
       <LandingHero isAuthenticated={Boolean(session)} />
 
       <LandingBody />
-    </main>
+
+      <LandingClosing isAuthenticated={Boolean(session)} />
+      </main>
+
+      <LandingFooter />
+    </>
   );
 }
 

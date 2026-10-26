@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { PERSONAS } from "@/lib/ai/personas";
 import { signOutAction } from "@/lib/auth/actions";
 import { getSessionContext, type SessionContext } from "@/lib/auth/session";
 import { LandingHero } from "@/components/marketing/landing-hero";
+import { LandingBody } from "@/components/marketing/landing-body";
 import { MAIN_CONTENT_ID } from "@/lib/ui/a11y";
 
 /**
@@ -12,9 +12,9 @@ import { MAIN_CONTENT_ID } from "@/lib/ui/a11y";
  * crashing.
  *
  * Day 57 (landing hero) replaces the Phase-1 scaffold top with a real,
- * session-aware hero + value proposition (`LandingHero`). The detailed body —
- * features, the six jurors, and how-it-works — is Day 58, and the social proof /
- * CTA / footer is Day 59; until then a light jury preview stands in below.
+ * session-aware hero + value proposition (`LandingHero`). Day 58 adds the
+ * detailed body — features, the six jurors, and how-it-works (`LandingBody`).
+ * The social proof / CTA / footer is Day 59.
  */
 export default async function Home() {
   let session: SessionContext | null = null;
@@ -35,23 +35,7 @@ export default async function Home() {
 
       <LandingHero isAuthenticated={Boolean(session)} />
 
-      {/* Interim jury preview — the full "meet the six jurors" section is Day 58. */}
-      <section className="mx-auto max-w-5xl px-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
-          The jury
-        </h2>
-        <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-          {PERSONAS.map((p) => (
-            <li
-              key={p.name}
-              className="rounded-md border border-border bg-surface px-4 py-3"
-            >
-              <span className="font-semibold text-navy">{p.title}</span>
-              <span className="text-muted"> — {p.lens}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <LandingBody />
     </main>
   );
 }

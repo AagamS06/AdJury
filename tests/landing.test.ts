@@ -1,5 +1,17 @@
 import { describe, it, expect } from "vitest";
-import { HERO, heroCtasFor, type HeroCta } from "@/lib/marketing/landing";
+import {
+  HERO,
+  heroCtasFor,
+  FEATURES,
+  FEATURES_INTRO,
+  JURY_INTRO,
+  jurySummaries,
+  HOW_IT_WORKS,
+  HOW_IT_WORKS_INTRO,
+  type HeroCta,
+  type SectionIntro,
+} from "@/lib/marketing/landing";
+import { PERSONAS } from "@/lib/ai/personas";
 
 /**
  * Landing hero content + CTA logic (DailyPlan Day 57). The React hero
@@ -87,10 +99,114 @@ describe("heroCtasFor", () => {
       for (const cta of ctas) {
         expect(cta.label.trim().length).toBeGreaterThan(0);
         // Every destination is an existing in-app route (no forward-dependency
-        // on a page Day 58/59 hasn't built yet).
+        // on a page Day 59 hasn't built yet).
         expect(cta.href.startsWith("/")).toBe(true);
         expect(REAL_ROUTES.has(cta.href)).toBe(true);
       }
     }
+  });
+});
+
+/**
+ * Landing body content (DailyPlan Day 58): the features, the jury, and the
+ * how-it-works steps. The React body (`components/marketing/landing-body.tsx`)
+ * only renders these values, so their invariants — full copy, unique keys, the
+ * jury matching the real `PERSONAS` roster, and ordered steps — are proved here.
+ *
+ * Day 58 DoD: the sections explain the product clearly.
+ */
+function expectWellFormedIntro(intro: SectionIntro) {
+  expect(intro.key.trim().length).toBeGreaterThan(0);
+  expect(intro.eyebrow.trim().length).toBeGreaterThan(0);
+  expect(intro.heading.trim().length).toBeGreaterThan(0);
+  expect(intro.intro.trim().length).toBeGreaterThan(0);
+}
+
+describe("landing body — section intros", () => {
+  it("every section has full heading + intro copy and a unique key", () => {
+    const intros = [FEATURES_INTRO, JURY_INTRO, HOW_IT_WORKS_INTRO];
+    for (const intro of intros) expectWellFormedIntro(intro);
+    const keys = intros.map((i) => i.key);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe("landing body — FEATURES", () => {
+  it("lists several capabilities, each with full copy and a unique key", () => {
+    expect(FEATURES.length).toBeGreaterThanOrEqual(3);
+    const keys = FEATURES.map((f) => f.key);
+    expect(new Set(keys).size).toBe(keys.length);
+    for (const feature of FEATURES) {
+      expect(feature.title.trim().length).toBeGreaterThan(0);
+      expect(feature.body.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("names the core mechanics: six jurors, grounding, and rewrites", () => {
+    const copy = FEATURES.map((f) => `${f.title} ${f.body}`)
+      .join(" ")
+      .toLowerCase();
+    expect(copy).toContain("juror");
+    expect(copy).toContain("rewrite");
+    // Grounded in the company's own brand/business, not a generic rubric.
+    expect(copy).toMatch(/brand|business/);
+  });
+
+  it("stays a QA layer — never promises to generate ads for you", () => {
+    const copy = FEATURES.map((f) => `${f.title} ${f.body}`)
+      .join(" ")
+      .toLowerCase();
+    expect(copy).not.toContain("generate your");
+    expect(copy).not.toContain("write your ads");
+  });
+});
+
+describe("landing body — the jury", () => {
+  it("renders exactly the real PERSONAS roster, in order (no drift)", () => {
+    const jurors = jurySummaries();
+    expect(jurors).toHaveLength(PERSONAS.length);
+    jurors.forEach((juror, i) => {
+      expect(juror.name).toBe(PERSONAS[i].name);
+      expect(juror.title).toBe(PERSONAS[i].title);
+      expect(juror.lens).toBe(PERSONAS[i].lens);
+    });
+  });
+
+  it("exposes only the public title + lens — never the system prompt", () => {
+    const jurors = jurySummaries();
+    for (const juror of jurors) {
+      expect(juror.title.trim().length).toBeGreaterThan(0);
+      expect(juror.lens.trim().length).toBeGreaterThan(0);
+      // The marketing summary must not leak prompt text.
+      expect(Object.keys(juror)).toEqual(["name", "title", "lens"]);
+    }
+  });
+});
+
+describe("landing body — how it works", () => {
+  it("is a short, ordered flow with full copy and unique keys", () => {
+    expect(HOW_IT_WORKS.length).toBeGreaterThanOrEqual(3);
+    const keys = HOW_IT_WORKS.map((s) => s.key);
+    expect(new Set(keys).size).toBe(keys.length);
+    for (const step of HOW_IT_WORKS) {
+      expect(step.title.trim().length).toBeGreaterThan(0);
+      expect(step.body.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("numbers steps 1..N consecutively in array order", () => {
+    HOW_IT_WORKS.forEach((step, i) => {
+      expect(step.step).toBe(i + 1);
+    });
+  });
+
+  it("describes submit → review → decide, with the human in control", () => {
+    const copy = HOW_IT_WORKS.map((s) => `${s.title} ${s.body}`)
+      .join(" ")
+      .toLowerCase();
+    expect(copy).toMatch(/submit|paste|upload/);
+    expect(copy).toContain("review");
+    // The product never auto-publishes — the human decides what ships.
+    expect(copy).toMatch(/decide|you ship|what ships|nothing publishes/);
   });
 });

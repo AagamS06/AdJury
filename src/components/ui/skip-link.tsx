@@ -20,7 +20,7 @@ export function SkipLink() {
   return (
     <a
       href={mainContentHref()}
-      className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-sm focus:border focus:border-border focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-navy focus:shadow-[0_4px_12px_rgba(11,11,15,.12)] focus:outline-none focus:ring-2 focus:ring-royal-bright"
+      className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-sm focus:border focus:border-border focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-navy focus:shadow-elevated focus:outline-none focus:ring-2 focus:ring-royal-bright"
     >
       {SKIP_LINK_LABEL}
     </a>

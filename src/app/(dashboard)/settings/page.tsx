@@ -37,7 +37,7 @@ export default async function SettingsPage() {
       {/* Company details (read-only summary; edited in onboarding) */}
       <section className="mt-8 max-w-3xl">
         <h2 className="text-xl font-bold text-ink">Company</h2>
-        <div className="mt-4 rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+        <div className="mt-4 rounded-md border border-border bg-surface p-6 shadow-card">
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
               <dt className="text-sm text-muted">Company name</dt>
@@ -79,7 +79,7 @@ export default async function SettingsPage() {
       {/* Plan tier (the editable setting) */}
       <section className="mt-10 max-w-3xl">
         <h2 className="text-xl font-bold text-ink">Plan</h2>
-        <div className="mt-4 rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+        <div className="mt-4 rounded-md border border-border bg-surface p-6 shadow-card">
           <CompanySettingsForm planTier={company.plan_tier} />
         </div>
       </section>
@@ -87,7 +87,7 @@ export default async function SettingsPage() {
       {/* Brand link */}
       <section className="mt-10 max-w-3xl">
         <h2 className="text-xl font-bold text-ink">Brand &amp; voice</h2>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-surface p-6 shadow-card">
           <p className="max-w-xl text-sm text-body">
             Manage the tone &amp; style guide the Brand Voice Guardian juror
             reviews every submission against.

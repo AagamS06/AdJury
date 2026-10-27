@@ -27,6 +27,14 @@ const config: Config = {
         md: "10px",
         lg: "16px",
       },
+      // Elevation tokens — Design.md §4: "subtle only — 0 1px 2px rgba(11,11,15,.06)
+      // for cards; deeper shadow reserved for modals/menus". The `rgba(11,11,15,…)`
+      // channels are the ink/black token (#0B0B0F), so elevation stays on-palette.
+      // Named here once instead of repeated as arbitrary `shadow-[…]` magic strings.
+      boxShadow: {
+        card: "0 1px 2px rgba(11,11,15,.06)",
+        elevated: "0 4px 12px rgba(11,11,15,.10)",
+      },
       fontFamily: {
         sans: [
           "Inter",

@@ -11,7 +11,7 @@ import Link from "next/link";
  */
 export default function DashboardNotFound() {
   return (
-    <div className="mx-auto max-w-xl rounded-md border border-border bg-surface p-8 text-center shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+    <div className="mx-auto max-w-xl rounded-md border border-border bg-surface p-8 text-center shadow-card">
       <p className="text-sm font-semibold uppercase tracking-wide text-muted">
         Not found
       </p>

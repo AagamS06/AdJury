@@ -70,7 +70,7 @@ export function Scorecard({
   return (
     <section
       aria-label="Review scorecard"
-      className="overflow-hidden rounded-md border border-border bg-surface shadow-[0_1px_2px_rgba(11,11,15,.06)]"
+      className="overflow-hidden rounded-md border border-border bg-surface shadow-card"
     >
       {/* Navy header bar */}
       <header className="flex items-start justify-between gap-4 bg-navy px-6 py-5 text-white">

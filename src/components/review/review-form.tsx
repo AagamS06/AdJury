@@ -148,7 +148,7 @@ export function ReviewForm() {
       <form
         onSubmit={onSubmit}
         noValidate
-        className="max-w-3xl rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]"
+        className="max-w-3xl rounded-md border border-border bg-surface p-6 shadow-card"
       >
         {/* Ad format (Day 15a) */}
         <fieldset className="mb-4">
@@ -373,7 +373,7 @@ function ResultPanel({
     return (
       <div
         role="status"
-        className="flex items-center rounded-md border border-border bg-surface p-6 text-sm text-muted shadow-[0_1px_2px_rgba(11,11,15,.06)]"
+        className="flex items-center rounded-md border border-border bg-surface p-6 text-sm text-muted shadow-card"
       >
         The five jurors are reviewing your content…
       </div>

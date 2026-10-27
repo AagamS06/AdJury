@@ -97,7 +97,7 @@ function AnalyticsBody({ analytics }: { analytics: CompanyAnalytics }) {
   // No reviews at all: a focused empty state with a call to action, nothing else.
   if (state.kind === "empty") {
     return (
-      <div className="mt-8 rounded-md border border-border bg-surface p-8 text-center shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+      <div className="mt-8 rounded-md border border-border bg-surface p-8 text-center shadow-card">
         <h2 className="text-lg font-semibold text-navy">{state.headline}</h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-muted">
           {state.detail}
@@ -138,7 +138,7 @@ function AnalyticsBody({ analytics }: { analytics: CompanyAnalytics }) {
         {shares.map((share) => (
           <div
             key={share.verdict}
-            className="rounded-md border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(11,11,15,.06)]"
+            className="rounded-md border border-border bg-surface p-5 shadow-card"
           >
             <div className="flex items-center justify-between gap-2">
               <span
@@ -159,7 +159,7 @@ function AnalyticsBody({ analytics }: { analytics: CompanyAnalytics }) {
       </div>
 
       {/* Score-trend chart */}
-      <section className="rounded-md border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+      <section className="rounded-md border border-border bg-surface p-5 shadow-card">
         <h2 className="text-lg font-semibold text-navy">Score trend</h2>
         {scoreTrend.some((p) => p.averageScore !== null) ? (
           <div className="mt-4">
@@ -195,7 +195,7 @@ function StatTile({
   suffix?: string;
 }) {
   return (
-    <div className="rounded-md border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+    <div className="rounded-md border border-border bg-surface p-5 shadow-card">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted">
         {label}
       </p>

@@ -21,7 +21,7 @@ export default function ReviewDetailLoading() {
         </div>
       </div>
 
-      <section className="mt-8 overflow-hidden rounded-md border border-border bg-surface shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+      <section className="mt-8 overflow-hidden rounded-md border border-border bg-surface shadow-card">
         <header className="flex items-start justify-between gap-4 bg-navy px-6 py-5">
           <div className="space-y-2">
             <Skeleton className="h-3 w-28 bg-white/25" />

@@ -5,6 +5,7 @@ import {
   HOW_IT_WORKS_INTRO,
   JURY_INTRO,
   jurySummaries,
+  LANDING_SECTION_IDS,
   type SectionIntro,
 } from "@/lib/marketing/landing";
 
@@ -21,7 +22,12 @@ import {
  * list; the step numbers are decorative (`aria-hidden`) because the ordered list
  * already conveys sequence — nothing relies on colour alone.
  *
- * Scope: the social proof / CTA / footer below this is Day 59.
+ * Scope: the social proof / final CTA / footer below this is Day 59
+ * (`LandingClosing` + `LandingFooter`).
+ *
+ * The sections carry stable `id`s (from `LANDING_SECTION_IDS`) so the Day-59
+ * footer's "Product" anchors jump to them — one shared source of truth, no
+ * drift between a footer link and the section it targets.
  */
 export function LandingBody() {
   const jurors = jurySummaries();
@@ -30,6 +36,7 @@ export function LandingBody() {
     <>
       {/* Features ----------------------------------------------------------- */}
       <section
+        id={LANDING_SECTION_IDS.features}
         aria-labelledby="landing-features-heading"
         className="mx-auto max-w-5xl px-6 py-16"
       >
@@ -51,6 +58,7 @@ export function LandingBody() {
 
       {/* The jury ----------------------------------------------------------- */}
       <section
+        id={LANDING_SECTION_IDS.jury}
         aria-labelledby="landing-jury-heading"
         className="border-y border-border bg-canvas"
       >
@@ -76,6 +84,7 @@ export function LandingBody() {
 
       {/* How it works ------------------------------------------------------- */}
       <section
+        id={LANDING_SECTION_IDS.howItWorks}
         aria-labelledby="landing-how-heading"
         className="mx-auto max-w-5xl px-6 py-16"
       >

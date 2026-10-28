@@ -94,7 +94,9 @@ export function JurorCard({
         </p>
       )}
 
-      <p className="mt-3 text-sm leading-relaxed text-body">{juror.summary}</p>
+      <p className="mt-3 break-words text-sm leading-relaxed text-body">
+        {juror.summary}
+      </p>
 
       <JurorIssues issues={juror.issues} compliance={flagged} />
 
@@ -137,10 +139,12 @@ function JurorIssues({
                   {severityLabel(issue.severity)}
                 </span>
               </div>
-              <p className="mt-1 font-medium text-body">
+              <p className="mt-1 break-words font-medium text-body">
                 &ldquo;{issue.excerpt}&rdquo;
               </p>
-              <p className="mt-0.5 text-muted">{issue.explanation}</p>
+              <p className="mt-0.5 break-words text-muted">
+                {issue.explanation}
+              </p>
             </li>
           );
         })}

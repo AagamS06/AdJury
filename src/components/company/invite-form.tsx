@@ -83,7 +83,7 @@ export function InviteForm() {
           role="status"
           className="mt-4 rounded-md border border-success/30 bg-success/10 p-4"
         >
-          <p className="text-sm font-medium text-body">
+          <p className="break-words text-sm font-medium text-body">
             Invitation ready for{" "}
             <span className="font-semibold">{state.invitedEmail}</span>. Email
             delivery isn&apos;t wired up yet — share this link so they can join:

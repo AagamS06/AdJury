@@ -72,7 +72,7 @@ function AuthNav({ session }: { session: SessionContext | null }) {
 
   return (
     <div className="flex items-center gap-3 text-sm">
-      <span className="text-muted">
+      <span className="min-w-0 break-words text-muted">
         Signed in as{" "}
         <span className="font-medium text-body">{session.email}</span>
       </span>

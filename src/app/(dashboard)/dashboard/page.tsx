@@ -163,7 +163,7 @@ export default async function DashboardPage() {
             href="/analytics"
             cta="View analytics"
           />
-          <section className="rounded-md border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+          <section className="rounded-md border border-border bg-surface p-5 shadow-card">
             <h3 className="text-base font-semibold text-navy">Your access</h3>
             <p className="mt-1 text-sm text-body">
               Role:{" "}
@@ -179,7 +179,7 @@ export default async function DashboardPage() {
           </section>
 
           {isAdmin && (
-            <section className="rounded-md border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+            <section className="rounded-md border border-border bg-surface p-5 shadow-card">
               <h3 className="text-base font-semibold text-navy">
                 Company management
               </h3>
@@ -221,7 +221,7 @@ export default async function DashboardPage() {
 /** One key-metric tile (reviews / average score / pass rate). */
 function MetricTile({ metric }: { metric: DashboardMetric }) {
   return (
-    <div className="rounded-md border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+    <div className="rounded-md border border-border bg-surface p-5 shadow-card">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted">
         {metric.label}
       </p>
@@ -253,7 +253,7 @@ function ShortcutCard({
   primary?: boolean;
 }) {
   return (
-    <section className="rounded-md border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+    <section className="rounded-md border border-border bg-surface p-5 shadow-card">
       <h3 className="text-base font-semibold text-navy">{title}</h3>
       <p className="mt-1 text-sm text-muted">{description}</p>
       <Link

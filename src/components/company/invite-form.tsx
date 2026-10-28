@@ -25,7 +25,7 @@ export function InviteForm() {
   const [state, formAction] = useActionState(createInvitationAction, INITIAL);
 
   return (
-    <div className="rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+    <div className="rounded-md border border-border bg-surface p-6 shadow-card">
       <h2 className="text-lg font-semibold text-navy">Invite a teammate</h2>
       <p className="mt-1 text-sm text-muted">
         Send an invite link so a colleague can join your company and start

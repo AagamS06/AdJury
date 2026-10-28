@@ -68,7 +68,7 @@ export default async function BrandPage() {
         )}
       </div>
 
-      <div className="mt-8 max-w-3xl rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+      <div className="mt-8 max-w-3xl rounded-md border border-border bg-surface p-6 shadow-card">
         {loadError ? (
           <p
             role="alert"

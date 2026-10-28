@@ -44,7 +44,7 @@ export default async function AccountPage() {
       {/* Profile (display name) */}
       <section className="mt-8 max-w-3xl">
         <h2 className="text-xl font-bold text-ink">Profile</h2>
-        <div className="mt-4 rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+        <div className="mt-4 rounded-md border border-border bg-surface p-6 shadow-card">
           <UserSettingsForm displayName={displayName} />
         </div>
       </section>
@@ -55,7 +55,7 @@ export default async function AccountPage() {
         <p className="mt-1 max-w-2xl text-sm text-body">
           Choose which emails AdJury sends you.
         </p>
-        <div className="mt-4 rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+        <div className="mt-4 rounded-md border border-border bg-surface p-6 shadow-card">
           <NotificationPreferencesForm prefs={notificationPrefs} />
         </div>
       </section>
@@ -74,7 +74,7 @@ export default async function AccountPage() {
       {/* Account details (read-only summary) */}
       <section className="mt-10 max-w-3xl">
         <h2 className="text-xl font-bold text-ink">Account details</h2>
-        <div className="mt-4 rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+        <div className="mt-4 rounded-md border border-border bg-surface p-6 shadow-card">
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
               <dt className="text-sm text-muted">Email</dt>

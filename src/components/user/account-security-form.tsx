@@ -38,7 +38,7 @@ export function AccountSecurityForms({ email }: { email: string }) {
 function ChangePasswordForm() {
   const [state, formAction] = useActionState(changePasswordAction, INITIAL);
   return (
-    <div className="rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+    <div className="rounded-md border border-border bg-surface p-6 shadow-card">
       <h3 className="text-base font-semibold text-navy">Change password</h3>
       <p className="mb-4 mt-1 text-sm text-muted">
         Choose a new password of at least {MIN_PASSWORD_CHARS} characters.
@@ -69,7 +69,7 @@ function ChangePasswordForm() {
 function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
   const [state, formAction] = useActionState(changeEmailAction, INITIAL);
   return (
-    <div className="rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+    <div className="rounded-md border border-border bg-surface p-6 shadow-card">
       <h3 className="text-base font-semibold text-navy">Change email</h3>
       <p className="mb-4 mt-1 text-sm text-muted">
         You&apos;re signed in as{" "}

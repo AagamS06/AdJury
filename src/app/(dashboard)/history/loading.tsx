@@ -20,7 +20,7 @@ export default function HistoryLoading() {
         </div>
       </div>
 
-      <div className="mt-8 overflow-hidden rounded-md border border-border bg-surface shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+      <div className="mt-8 overflow-hidden rounded-md border border-border bg-surface shadow-card">
         <div className="border-b border-border bg-canvas px-4 py-3">
           <Skeleton className="h-3 w-40" />
         </div>

@@ -34,7 +34,7 @@ export function InvitationList({ invitations }: { invitations: InvitationRow[] }
   const rows = toInvitationList(invitations);
 
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-surface shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+    <div className="overflow-hidden rounded-md border border-border bg-surface shadow-card">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left text-sm">
           <caption className="sr-only">

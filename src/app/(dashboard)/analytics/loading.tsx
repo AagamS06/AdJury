@@ -28,7 +28,7 @@ export default function AnalyticsLoading() {
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="rounded-md border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(11,11,15,.06)]"
+              className="rounded-md border border-border bg-surface p-5 shadow-card"
             >
               <Skeleton className="h-3 w-20" />
               <Skeleton className="mt-4 h-7 w-16" />
@@ -37,7 +37,7 @@ export default function AnalyticsLoading() {
         </div>
 
         {/* Score-trend card */}
-        <section className="rounded-md border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+        <section className="rounded-md border border-border bg-surface p-5 shadow-card">
           <Skeleton className="h-5 w-32" />
           <Skeleton className="mt-4 h-64 w-full rounded-md" />
         </section>

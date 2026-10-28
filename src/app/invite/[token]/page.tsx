@@ -85,7 +85,7 @@ export default async function InvitePage({
           </h1>
         </div>
 
-        <div className="rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+        <div className="rounded-md border border-border bg-surface p-6 shadow-card">
           <InviteBody
             token={token}
             invitation={invitation}

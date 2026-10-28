@@ -30,7 +30,7 @@ export function JurorBreakdown({
   const rows = buildJurorBreakdown(jurorTrends, granularity);
 
   return (
-    <section className="rounded-md border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+    <section className="rounded-md border border-border bg-surface p-5 shadow-card">
       <div className="max-w-2xl">
         <h2 className="text-lg font-semibold text-navy">Per-juror breakdown</h2>
         <p className="mt-1 text-sm text-muted">

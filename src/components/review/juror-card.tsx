@@ -44,7 +44,7 @@ export function JurorCard({
 
   if (juror.status === "error") {
     return (
-      <article className="rounded-md border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+      <article className="rounded-md border border-border bg-surface p-5 shadow-card">
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-lg font-semibold text-ink">{label}</h3>
           <span className="shrink-0 rounded-sm bg-canvas px-2 py-1 text-xs font-medium text-muted ring-1 ring-border">
@@ -65,7 +65,7 @@ export function JurorCard({
   const tier = scoreTierLabel(juror.score);
 
   return (
-    <article className="rounded-md border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+    <article className="rounded-md border border-border bg-surface p-5 shadow-card">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-ink">{label}</h3>

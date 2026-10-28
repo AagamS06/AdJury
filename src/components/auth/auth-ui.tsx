@@ -33,7 +33,7 @@ export function AuthShell({
         <p className="mt-1 text-sm text-muted">{subtitle}</p>
       </div>
 
-      <div className="rounded-md border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(11,11,15,.06)]">
+      <div className="rounded-md border border-border bg-surface p-6 shadow-card">
         {children}
       </div>
 

@@ -135,7 +135,7 @@ function InviteBody({
   }
 
   const intro = (
-    <p className="mb-5 text-sm text-body">
+    <p className="mb-5 break-words text-sm text-body">
       You&apos;ve been invited to join a company on AdJury as{" "}
       <span className="font-semibold text-navy">
         {roleLabel(invitation.role)}
@@ -150,7 +150,7 @@ function InviteBody({
       <div>
         {intro}
         <InviteSignupForm token={token} email={invitation.email} />
-        <p className="mt-6 text-center text-sm text-muted">
+        <p className="mt-6 break-words text-center text-sm text-muted">
           Already have an account for {invitation.email}?{" "}
           <Link
             href="/login"
@@ -233,7 +233,7 @@ function Message({
   return (
     <p
       role="alert"
-      className={`rounded-md border px-4 py-3 text-sm ${classes}`}
+      className={`break-words rounded-md border px-4 py-3 text-sm ${classes}`}
     >
       {children}
     </p>

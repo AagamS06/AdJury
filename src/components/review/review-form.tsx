@@ -207,7 +207,10 @@ export function ReviewForm() {
                 {fieldErrors.image}
               </p>
             ) : (
-              <p id={`${baseId}-image-hint`} className="mt-1 text-sm text-muted">
+              <p
+                id={`${baseId}-image-hint`}
+                className="mt-1 break-words text-sm text-muted"
+              >
                 {imageName
                   ? `Selected: ${imageName}`
                   : "PNG, JPEG, WebP, or GIF — up to ~5 MB. The jurors review the image together with your caption below."}

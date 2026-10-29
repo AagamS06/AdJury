@@ -38,7 +38,9 @@ export function RewritePanel({
         </p>
         <CopyButton value={rewrite} />
       </div>
-      <p className="mt-1 text-sm leading-relaxed text-body">{rewrite}</p>
+      <p className="mt-1 break-words text-sm leading-relaxed text-body">
+        {rewrite}
+      </p>
 
       {diff.changed && (
         <details className="mt-3 border-t border-border pt-3">
@@ -100,7 +102,7 @@ function DiffBlock({
       <p className="text-xs font-semibold uppercase tracking-wide text-muted">
         {heading}
       </p>
-      <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-body">
+      <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-body">
         {segments.map((seg, i) => {
           if (seg.type === "equal") {
             return <span key={i}>{seg.value}</span>;
@@ -149,7 +151,7 @@ function PlainCompare({
         <p className="text-xs font-semibold uppercase tracking-wide text-muted">
           Original
         </p>
-        <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-body">
+        <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-body">
           {original}
         </p>
       </div>
@@ -157,7 +159,7 @@ function PlainCompare({
         <p className="text-xs font-semibold uppercase tracking-wide text-muted">
           Rewrite
         </p>
-        <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-body">
+        <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-body">
           {rewrite}
         </p>
       </div>

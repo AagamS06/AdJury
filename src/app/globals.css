@@ -33,22 +33,22 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Toast enter motion (DailyPlan Day 53). Subtle and functional only, and gated
-   on `prefers-reduced-motion: no-preference` so a user who asks for reduced
-   motion gets the toast instantly with no transform (Design.md §6). */
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .toast-enter {
-    animation: toast-in 160ms ease-out;
+/* Reduced-motion reset (DailyPlan Day 64 — Micro-interactions). A global
+   safety net: for any user who has asked for reduced motion, near-instantly
+   collapse every transition and animation app-wide (incl. the many
+   `transition-colors` hovers) and disable smooth scrolling, so motion never
+   depends on a per-element `motion-safe:` gate being remembered (Design.md §6,
+   WCAG 2.3.3). Durations go to a hair above zero rather than 0 so animations
+   that rely on an `animationend`/`transitionend` event still fire.
+   The toast enter keyframe + its `motion-safe:` gating now live in the Tailwind
+   config (`animate-toast-in`); see src/lib/ui/motion.ts. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -151,7 +151,7 @@ function ToastItem({
       onMouseLeave={startTimer}
       onFocus={clearTimer}
       onBlur={startTimer}
-      className={`toast-enter pointer-events-auto w-full max-w-sm rounded-md border border-l-4 border-border bg-surface p-3 shadow-elevated ${TOAST_ACCENT_CLASSES[toast.tone]}`}
+      className={`motion-safe:animate-toast-in pointer-events-auto w-full max-w-sm rounded-md border border-l-4 border-border bg-surface p-3 shadow-elevated ${TOAST_ACCENT_CLASSES[toast.tone]}`}
     >
       <div className="flex items-start gap-3">
         <span

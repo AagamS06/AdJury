@@ -35,6 +35,30 @@ const config: Config = {
         card: "0 1px 2px rgba(11,11,15,.06)",
         elevated: "0 4px 12px rgba(11,11,15,.10)",
       },
+      // Motion tokens — Design.md §6 ("keep animation minimal and functional").
+      // Canonical durations named once (see src/lib/ui/motion.ts), so motion is
+      // subtle and consistent instead of ad-hoc magic numbers. `base` (150ms)
+      // matches Tailwind's own default transition duration, so existing
+      // `transition-colors` hovers stay on-token. A drift test pins these to
+      // src/lib/ui/motion.ts.
+      transitionDuration: {
+        fast: "100ms",
+        base: "150ms",
+        slow: "250ms",
+      },
+      // The toast enter animation, tokenised out of a hand-written globals.css
+      // keyframe (DailyPlan Day 53 → Day 64). Applied via the `motion-safe:`
+      // variant (`motion-safe:animate-toast-in`) so it only plays when the user
+      // has not asked for reduced motion.
+      keyframes: {
+        "toast-in": {
+          from: { opacity: "0", transform: "translateY(8px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        "toast-in": "toast-in 150ms ease-out",
+      },
       fontFamily: {
         sans: [
           "Inter",

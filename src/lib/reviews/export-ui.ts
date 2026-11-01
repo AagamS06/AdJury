@@ -135,7 +135,7 @@ export function exportErrorMessage(
         "You've reached your export limit for now. Please try again a little later."
       );
     case 401:
-      return "Your session has expired. Please sign in again to export.";
+      return "Your session has expired. Please log in again to export.";
     case 403:
       return "You don't have permission to export this.";
     case 404:

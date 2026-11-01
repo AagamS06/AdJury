@@ -81,7 +81,7 @@ export async function acceptInvitation(
       ok: false,
       status: 401,
       reason: "unauthenticated",
-      error: "Sign in or create an account to accept this invitation.",
+      error: "Log in or create an account to accept this invitation.",
     };
   }
 
@@ -113,7 +113,7 @@ export async function acceptInvitation(
       status: 403,
       reason: "email-mismatch",
       error:
-        "This invitation was sent to a different email address. Sign in with that address to accept it.",
+        "This invitation was sent to a different email address. Log in with that address to accept it.",
     };
   }
 

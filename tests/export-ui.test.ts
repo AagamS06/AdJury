@@ -125,7 +125,7 @@ describe("exportErrorMessage", () => {
   });
 
   it("maps auth/permission/not-found statuses to actionable copy", () => {
-    expect(exportErrorMessage(401)).toMatch(/sign in/i);
+    expect(exportErrorMessage(401)).toMatch(/log in/i);
     expect(exportErrorMessage(403)).toMatch(/permission/i);
     expect(exportErrorMessage(404)).toMatch(/no longer available/i);
   });

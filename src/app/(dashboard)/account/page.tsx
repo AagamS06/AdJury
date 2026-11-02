@@ -38,7 +38,7 @@ export default async function AccountPage() {
     <div>
       <h1 className="text-3xl font-bold text-ink">Account</h1>
       <p className="mt-2 max-w-2xl text-body">
-        Manage your personal profile, notifications, and sign-in details.
+        Manage your personal profile, notifications, and login details.
       </p>
 
       {/* Profile (display name) */}
@@ -64,7 +64,7 @@ export default async function AccountPage() {
       <section className="mt-10 max-w-3xl">
         <h2 className="text-xl font-bold text-ink">Security</h2>
         <p className="mt-1 max-w-2xl text-sm text-body">
-          Update your password or the email address you sign in with.
+          Update your password or the email address you log in with.
         </p>
         <div className="mt-4">
           <AccountSecurityForms email={session.email} />

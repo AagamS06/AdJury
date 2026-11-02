@@ -1,12 +1,26 @@
 import Link from "next/link";
+import { GettingStarted } from "@/components/onboarding/getting-started";
 import { HistoryList } from "@/components/review/history-list";
 import { requireSession } from "@/lib/auth/guard";
 import { getSessionContext } from "@/lib/auth/session";
 import { createServerSupabase } from "@/lib/auth/supabase-server";
+import { hasBrandProfile } from "@/lib/company/brand-profile";
+import { getTeamForCompany } from "@/lib/company/read-team";
 import {
+  getBrandProfileByCompany,
   listReviewsByCompany,
   listReviewsWithScoresByCompany,
+  listUsersByCompany,
 } from "@/lib/db/queries";
+import {
+  buildGettingStarted,
+  gettingStartedProgress,
+  shouldShowFirstRun,
+  type FirstRunState,
+  type GettingStartedProgress,
+  type GettingStartedStep,
+} from "@/lib/onboarding/first-run";
+import { logError, errorContext } from "@/lib/observability/logger";
 import { getCompanyAnalytics } from "@/lib/reviews/analytics";
 import {
   buildDashboardMetrics,
@@ -62,8 +76,63 @@ export default async function DashboardPage() {
     ? buildDashboardMetrics(analyticsResult.analytics)
     : null;
 
+  // First-run guidance (Day 66): while the company is brand new (no reviews
+  // yet), show a getting-started checklist above the activity summary so a new
+  // user knows what to do first. The done-state of the admin setup steps comes
+  // from best-effort reads — a failure leaves a step "not done" (which invites
+  // the action) rather than crashing the dashboard (Rules.md §6). Members never
+  // trigger those reads: their only applicable step is "run a review".
+  let gettingStarted:
+    | { steps: GettingStartedStep[]; progress: GettingStartedProgress }
+    | null = null;
+  if (analyticsResult.ok) {
+    const totalReviews = analyticsResult.analytics.totalReviews;
+    if (shouldShowFirstRun({ role: session.role, totalReviews, hasBrandProfile: false })) {
+      let hasBrand = false;
+      let teamMemberCount: number | undefined;
+      if (isAdmin) {
+        try {
+          const db = await createServerSupabase();
+          hasBrand = hasBrandProfile(
+            await getBrandProfileByCompany(db, session.company.id),
+          );
+        } catch (err) {
+          logError("first-run brand read failed", {
+            op: "DashboardPage.firstRun.brand",
+            companyId: session.company.id,
+            ...errorContext(err),
+          });
+        }
+        const teamResult = await getTeamForCompany({
+          session: ctx,
+          list: async (companyId) =>
+            listUsersByCompany(await createServerSupabase(), companyId),
+        });
+        teamMemberCount = teamResult.ok ? teamResult.members.length : undefined;
+      }
+      const state: FirstRunState = {
+        role: session.role,
+        totalReviews,
+        hasBrandProfile: hasBrand,
+        teamMemberCount,
+      };
+      gettingStarted = {
+        steps: buildGettingStarted(state),
+        progress: gettingStartedProgress(state),
+      };
+    }
+  }
+
   return (
     <div>
+      {gettingStarted && (
+        <div className="mb-8">
+          <GettingStarted
+            steps={gettingStarted.steps}
+            progress={gettingStarted.progress}
+          />
+        </div>
+      )}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold text-ink">Dashboard</h1>

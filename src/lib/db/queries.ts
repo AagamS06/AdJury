@@ -37,6 +37,17 @@ function fail(op: string, error: { message: string; code?: string }): never {
   throw new Error(`db.${op} failed${code}: ${error.message}`);
 }
 
+/**
+ * Default scan cap for a per-company list read (team members, invitations).
+ * A **scan guard**, not a page size — it bounds how many rows an ordered read
+ * can fan out into so a company with an unexpectedly large roster/invite history
+ * can't trigger an unbounded transfer (DailyPlan Day 67 — query optimizations).
+ * It mirrors the analytics read's safety cap and sits far above the PRD's stated
+ * 10–200-employee range, so no realistic team is ever truncated. Callers that
+ * need a different bound pass `options.limit`.
+ */
+export const MAX_TENANT_LIST_SCAN = 1000;
+
 // ── companies ───────────────────────────────────────────────────────────
 
 export async function getCompanyById(
@@ -189,15 +200,23 @@ export async function getUserById(
   return (data as UserRow | null) ?? null;
 }
 
+export interface ListMembersOptions {
+  /** Scan guard on rows returned (defaults to {@link MAX_TENANT_LIST_SCAN}). */
+  limit?: number;
+}
+
 export async function listUsersByCompany(
   db: SupabaseClient,
   companyId: string,
+  options: ListMembersOptions = {},
 ): Promise<UserRow[]> {
+  const limit = options.limit ?? MAX_TENANT_LIST_SCAN;
   const { data, error } = await db
     .from("users")
     .select("*")
     .eq("company_id", companyId)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .limit(limit);
   if (error) fail("listUsersByCompany", error);
   return (data as UserRow[] | null) ?? [];
 }
@@ -477,16 +496,24 @@ export async function getInvitationByTokenHash(
   return (data as InvitationRow | null) ?? null;
 }
 
+export interface ListInvitationsOptions {
+  /** Scan guard on rows returned (defaults to {@link MAX_TENANT_LIST_SCAN}). */
+  limit?: number;
+}
+
 /** List a company's invitations, newest first (index: invitations(company_id, created_at desc)). */
 export async function listInvitationsByCompany(
   db: SupabaseClient,
   companyId: string,
+  options: ListInvitationsOptions = {},
 ): Promise<InvitationRow[]> {
+  const limit = options.limit ?? MAX_TENANT_LIST_SCAN;
   const { data, error } = await db
     .from("invitations")
     .select("*")
     .eq("company_id", companyId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(limit);
   if (error) fail("listInvitationsByCompany", error);
   return (data as InvitationRow[] | null) ?? [];
 }

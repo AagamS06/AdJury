@@ -3,17 +3,23 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   AUTH_ACTION_LABELS,
+  JUROR_COUNT,
+  JUROR_COUNT_WORD,
+  NUMBER_WORDS,
   TERM_RULES,
+  numberWord,
   type TermRule,
 } from "@/lib/ui/copy";
 import {
   COPY_SOURCE_FILES,
   findTermDrift,
   findEmoji,
+  findJurorCountDrift,
   auditModule,
   auditCopy,
   type SourceModule,
 } from "@/lib/ui/copy-audit";
+import { PERSONAS } from "@/lib/ai/personas";
 
 /**
  * Copy audit (DailyPlan Day 65 — Copywriting pass).
@@ -194,6 +200,87 @@ describe("copy audit — emoji scanner", () => {
   });
 });
 
+describe("copy audit — juror-count scanner", () => {
+  it("flags a jury-size claim that disagrees with the roster", () => {
+    // The roster is six; "five jurors" is stale drift.
+    const f = findJurorCountDrift(mod(`<p>The five jurors review your copy.</p>`));
+    expect(f).toHaveLength(1);
+    expect(f[0]).toMatchObject({
+      kind: "juror-count",
+      ruleId: "juror-count",
+      match: "five jurors",
+      canonical: `${numberWord(JUROR_COUNT)} jurors`,
+    });
+  });
+
+  it("does NOT flag the correct count, in either plural or 'juror personas' form", () => {
+    const correct = numberWord(JUROR_COUNT); // "six"
+    expect(findJurorCountDrift(mod(`<p>The ${correct} jurors review it.</p>`))).toEqual([]);
+    expect(
+      findJurorCountDrift(mod(`<p>${correct} expert jurors weigh in.</p>`)),
+    ).toEqual([]);
+    expect(
+      findJurorCountDrift(mod(`<p>${correct} AI juror personas review it.</p>`)),
+    ).toEqual([]);
+  });
+
+  it("catches the 'N AI juror personas' shape through a qualifier word", () => {
+    const f = findJurorCountDrift(
+      mod(`description: "Five AI juror personas review your content."`),
+    );
+    expect(f).toHaveLength(1);
+    expect(f[0].kind).toBe("juror-count");
+  });
+
+  it("catches the digit form '5 jurors'", () => {
+    expect(findJurorCountDrift(mod(`<p>Run all 5 jurors.</p>`))).toHaveLength(1);
+  });
+
+  it("does NOT flag the singular adjectival 'juror' (not a jury-size claim)", () => {
+    // "one juror weight" counts weights, not the jury; "per-juror" has no number.
+    expect(
+      findJurorCountDrift(mod(`<p>At least one juror weight must be positive.</p>`)),
+    ).toEqual([]);
+    expect(findJurorCountDrift(mod(`<p>A per-juror breakdown.</p>`))).toEqual([]);
+    expect(findJurorCountDrift(mod(`<p>One juror's score.</p>`))).toEqual([]);
+  });
+
+  it("does NOT flag a count attached to a different noun ('six expert lenses')", () => {
+    expect(
+      findJurorCountDrift(mod(`<p>Six jurors, six expert lenses.</p>`)),
+    ).toEqual([]); // "Six jurors" is correct; "six expert lenses" isn't a juror claim
+    expect(findJurorCountDrift(mod(`<p>Five expert lenses.</p>`))).toEqual([]);
+  });
+
+  it("does NOT flag a stale count sitting inside a comment", () => {
+    const src = [
+      `// Historically the five jurors ran the fan-out.`,
+      `/** Weighted mean of the five juror scores. */`,
+      `const label = "the six jurors";`,
+    ].join("\n");
+    expect(findJurorCountDrift(mod(src))).toEqual([]);
+  });
+
+  it("honours an explicit expected count", () => {
+    // With five expected, "five jurors" is clean and "six jurors" drifts.
+    expect(findJurorCountDrift(mod(`<p>five jurors</p>`), 5)).toEqual([]);
+    expect(findJurorCountDrift(mod(`<p>six jurors</p>`), 5)).toHaveLength(1);
+  });
+
+  it("reports the correct 1-based line number", () => {
+    const src = ["line one", "line two", "the five jurors"].join("\n");
+    expect(findJurorCountDrift(mod(src))[0].line).toBe(3);
+  });
+
+  it("exempts the lexicon's own source files (which document the drifted phrase)", () => {
+    const banned = `const x = "the five jurors";`;
+    for (const p of COPY_SOURCE_FILES) {
+      expect(findJurorCountDrift(mod(banned, p))).toEqual([]);
+    }
+    expect(findJurorCountDrift(mod(banned, "src/app/other.tsx"))).toHaveLength(1);
+  });
+});
+
 describe("copy audit — module aggregation", () => {
   it("merges both scanners' findings in source order", () => {
     const src = [
@@ -251,6 +338,20 @@ describe("copy lexicon integrity", () => {
       signOut: "Sign out",
     });
   });
+
+  it("derives JUROR_COUNT from the real roster, not a hard-coded literal", () => {
+    expect(JUROR_COUNT).toBe(PERSONAS.length);
+    expect(JUROR_COUNT).toBeGreaterThan(1); // count claims are plural prose
+    expect(JUROR_COUNT_WORD).toBe(numberWord(JUROR_COUNT));
+  });
+
+  it("numberWord spells small cardinals and falls back to the figure", () => {
+    expect(numberWord(0)).toBe("zero");
+    expect(numberWord(6)).toBe("six");
+    expect(numberWord(NUMBER_WORDS.length)).toBe(String(NUMBER_WORDS.length));
+    expect(numberWord(99)).toBe("99");
+    expect(numberWord(-1)).toBe("-1");
+  });
 });
 
 // ── 4. This pass's fixes are in place ────────────────────────────────────────
@@ -279,5 +380,43 @@ describe("Day 65 copy fixes", () => {
     expect(
       findTermDrift(mod(src, "src/lib/company/accept-invitation.ts")),
     ).toEqual([]);
+  });
+});
+
+// ── 5. Day 69 friction fix: the UI states the real jury size (six) ───────────
+
+describe("Day 69 juror-count fixes", () => {
+  const CHROME = [
+    "src/app/layout.tsx",
+    "src/app/(dashboard)/review/page.tsx",
+    "src/components/review/history-list.tsx",
+    "src/components/review/review-form.tsx",
+  ] as const;
+
+  it("the four core-flow surfaces no longer say 'five jurors'", () => {
+    for (const path of CHROME) {
+      const src = read(path);
+      expect(
+        findJurorCountDrift(mod(src, path)),
+        `${path} still states a stale juror count`,
+      ).toEqual([]);
+      expect(src).not.toMatch(/\bfive jurors\b/i);
+    }
+  });
+
+  it("the submit page, status, empty state, and meta description say the real count", () => {
+    const word = numberWord(JUROR_COUNT); // "six"
+    expect(read("src/app/(dashboard)/review/page.tsx")).toContain(
+      `the ${word} jurors will each score it`,
+    );
+    expect(read("src/components/review/review-form.tsx")).toContain(
+      `The ${word} jurors are reviewing your content`,
+    );
+    expect(read("src/components/review/history-list.tsx")).toContain(
+      `past the ${word} jurors`,
+    );
+    expect(read("src/app/layout.tsx")).toMatch(
+      new RegExp(`${word} AI juror personas`, "i"),
+    );
   });
 });

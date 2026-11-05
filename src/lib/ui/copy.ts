@@ -34,6 +34,63 @@
  * rather than a brittle word-list.
  */
 
+import { PERSONAS } from "@/lib/ai/personas";
+
+/**
+ * The size of the jury, derived from the real roster the orchestrator runs
+ * ({@link PERSONAS}), so adding or removing a juror updates the single source of
+ * truth in one place. The copy audit (`findJurorCountDrift`) enforces that
+ * user-facing chrome states exactly this many jurors.
+ *
+ * This guard exists because of a real drift it caught (DailyPlan Day 69 —
+ * friction fixes): the submit flow's intro, its "reviewing…" status, the
+ * history empty state, and the site meta description all still said "five
+ * jurors" after the Business Analyst (Day 23b) made the jury six, while the
+ * scorecard rendered six juror cards — a comprehension/trust friction a tester
+ * hits in the core flow. Prose hard-codes the number-word (as the landing page
+ * already does); the audit keeps every such statement honest against the roster.
+ */
+export const JUROR_COUNT: number = PERSONAS.length;
+
+/** Cardinal number-words 0–20, for stating small counts in prose. */
+export const NUMBER_WORDS: readonly string[] = [
+  "zero",
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+  "ten",
+  "eleven",
+  "twelve",
+  "thirteen",
+  "fourteen",
+  "fifteen",
+  "sixteen",
+  "seventeen",
+  "eighteen",
+  "nineteen",
+  "twenty",
+] as const;
+
+/**
+ * The spelled cardinal for `n` when it is a small non-negative integer within
+ * {@link NUMBER_WORDS}, else its decimal string. Lets the audit name the
+ * expected count in prose ("six") instead of a bare digit.
+ */
+export function numberWord(n: number): string {
+  return Number.isInteger(n) && n >= 0 && n < NUMBER_WORDS.length
+    ? NUMBER_WORDS[n]
+    : String(n);
+}
+
+/** The canonical spelled jury size, e.g. `"six"`. */
+export const JUROR_COUNT_WORD: string = numberWord(JUROR_COUNT);
+
 /**
  * Canonical labels for the three authentication actions. Prose names an action
  * the way its screen/button is labelled, so these are the one spelling each

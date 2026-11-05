@@ -6,7 +6,7 @@
  *
  * A pure, node-testable scanner — the copywriting-pass sibling of the Day-60
  * `palette-audit` / Day-61 `responsive-audit` / Day-62 `semantics-audit` — that
- * proves two voice invariants (Design.md §7) over the real source with no Next
+ * proves three voice invariants (Design.md §7) over the real source with no Next
  * build, no DOM, and no credential:
  *
  *  1. TERMINOLOGY (`findTermDrift`) — every term in {@link TERM_RULES} is spelled
@@ -21,6 +21,16 @@
  *     en/em dashes, …) are deliberately NOT in the scanned ranges, so legitimate
  *     punctuation is never caught.
  *
+ *  3. JUROR COUNT (`findJurorCountDrift`) — any chrome statement of how many
+ *     jurors AdJury runs ("five jurors", "six AI juror personas") must equal the
+ *     real roster size, {@link JUROR_COUNT} (= `PERSONAS.length`). This caught
+ *     the Day-69 friction: the submit flow said "five jurors" while the
+ *     scorecard rendered six. The scan keys only on a number adjacent to
+ *     "juror(s)", so "six expert lenses" or a bare "per-juror" never matches,
+ *     and — like the others — it runs on comment-stripped source, so an accurate
+ *     internal note ("the five craft jurors, then the Business Analyst") in a
+ *     docstring is never flagged.
+ *
  * Both scanners strip comments first (reusing the palette audit's
  * comment-stripper, Rules.md §7) so a word or symbol in a docstring can't trip a
  * scan while reported line numbers still match the original file. The lexicon's
@@ -32,7 +42,13 @@
  */
 
 import { stripComments, type SourceModule } from "@/lib/ui/palette-audit";
-import { TERM_RULES, type TermRule } from "@/lib/ui/copy";
+import {
+  JUROR_COUNT,
+  NUMBER_WORDS,
+  TERM_RULES,
+  numberWord,
+  type TermRule,
+} from "@/lib/ui/copy";
 
 export type { SourceModule };
 
@@ -48,7 +64,7 @@ export const COPY_SOURCE_FILES: readonly string[] = [
 
 // ── Finding model ────────────────────────────────────────────────────────────
 
-export type CopyFindingKind = "term" | "emoji";
+export type CopyFindingKind = "term" | "emoji" | "juror-count";
 
 export interface CopyFinding {
   /** Repo-relative path, POSIX separators. */
@@ -140,11 +156,76 @@ export function findEmoji(mod: SourceModule): CopyFinding[] {
   return out;
 }
 
+/** A spelled cardinal (1–12) or a 1–3 digit figure, as a capturing alternation. */
+const COUNT_TOKEN =
+  "(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\\d{1,3})";
+
+/**
+ * Chrome ways to state the jury size, both keyed on a number quantifying jurors:
+ *
+ *  - PLURAL head ("five jurors", "six expert jurors") — the number is directly
+ *    followed by the **plural** "jurors", optionally through one adjective. The
+ *    plural is what makes it a count of the jury; the singular adjectival use
+ *    ("one juror weight", "per-juror") is deliberately NOT matched.
+ *  - "juror personas" head ("six AI juror personas") — the number counts the
+ *    personas, through up to two qualifier words.
+ *
+ * Neither matches "six expert lenses" (no "juror") nor a bare "per-juror".
+ */
+const JUROR_COUNT_PATTERNS: readonly RegExp[] = [
+  new RegExp(`\\b${COUNT_TOKEN}(?:\\s+[A-Za-z]+)?\\s+jurors\\b`, "giu"),
+  new RegExp(`\\b${COUNT_TOKEN}(?:\\s+[A-Za-z]+){0,2}\\s+juror\\s+personas?\\b`, "giu"),
+];
+
+/** Parse a matched count token ("five" or "5") to its integer, or `null`. */
+function parseCount(token: string): number | null {
+  const lower = token.toLowerCase();
+  if (/^\d+$/.test(lower)) return Number.parseInt(lower, 10);
+  const i = NUMBER_WORDS.indexOf(lower);
+  return i >= 0 ? i : null;
+}
+
+/**
+ * Chrome statements of the jury size that disagree with the real roster
+ * ({@link JUROR_COUNT}). Skipped for the lexicon source files, which hold the
+ * drifted phrase as documentation. Runs on comment-stripped source, so an
+ * accurate internal note in a docstring is never flagged.
+ */
+export function findJurorCountDrift(
+  mod: SourceModule,
+  expected: number = JUROR_COUNT,
+): CopyFinding[] {
+  if (COPY_SOURCE_FILES.includes(mod.path)) return [];
+  const clean = stripComments(mod.src);
+  const out: CopyFinding[] = [];
+  const seen = new Set<number>();
+  for (const re of JUROR_COUNT_PATTERNS) {
+    for (const m of clean.matchAll(re)) {
+      const stated = parseCount(m[1]);
+      if (stated === null || stated === expected) continue;
+      const at = m.index ?? 0;
+      if (seen.has(at)) continue; // both patterns overlapping the same text
+      seen.add(at);
+      out.push({
+        path: mod.path,
+        line: lineAt(clean, at),
+        kind: "juror-count",
+        match: m[0],
+        ruleId: "juror-count",
+        canonical: `${numberWord(expected)} jurors`,
+      });
+    }
+  }
+  return out.sort((a, b) => a.line - b.line);
+}
+
 /** Every copy finding in one module, in source order. */
 export function auditModule(mod: SourceModule): CopyFinding[] {
-  return [...findTermDrift(mod), ...findEmoji(mod)].sort(
-    (a, b) => a.line - b.line || a.kind.localeCompare(b.kind),
-  );
+  return [
+    ...findTermDrift(mod),
+    ...findEmoji(mod),
+    ...findJurorCountDrift(mod),
+  ].sort((a, b) => a.line - b.line || a.kind.localeCompare(b.kind));
 }
 
 export interface CopyAudit {

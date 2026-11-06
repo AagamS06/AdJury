@@ -378,7 +378,7 @@ function ResultPanel({
         role="status"
         className="flex items-center rounded-md border border-border bg-surface p-6 text-sm text-muted shadow-card"
       >
-        The five jurors are reviewing your content…
+        The six jurors are reviewing your content…
       </div>
     );
   }

@@ -15,7 +15,7 @@ export default async function ReviewPage() {
     <div>
       <h1 className="text-3xl font-bold text-ink">New review</h1>
       <p className="mt-2 max-w-2xl text-body">
-        Paste your marketing content and the five jurors will each score it and
+        Paste your marketing content and the six jurors will each score it and
         suggest improvements. We critique and suggest — you stay in control.
       </p>
 

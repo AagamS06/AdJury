@@ -6,7 +6,7 @@ import { ToastProvider } from "@/components/ui/toast";
 export const metadata: Metadata = {
   title: "AdJury — AI content critique",
   description:
-    "Five AI juror personas review your marketing content before you publish.",
+    "Six AI juror personas review your marketing content before you publish.",
 };
 
 export default function RootLayout({

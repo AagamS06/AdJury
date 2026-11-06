@@ -111,7 +111,7 @@ function HistoryEmpty() {
     <div className="rounded-md border border-dashed border-border bg-surface p-10 text-center">
       <h2 className="text-lg font-semibold text-navy">No reviews yet</h2>
       <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
-        When you run marketing content past the five jurors, each review will
+        When you run marketing content past the six jurors, each review will
         appear here for your whole company.
       </p>
       <Link

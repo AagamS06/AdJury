@@ -15,6 +15,21 @@ import type { PersonaWeightsConfig } from "@/lib/schema/weights";
 
 export type PlanTier = "free" | "pro" | "enterprise";
 export type UserRole = "admin" | "member";
+/**
+ * Stripe subscription status, mirrored on the company row (Day 71, migration
+ * 0012). The vocabulary is Stripe's own subscription-status set; a company with
+ * no subscription reads `null`. `trialing` and `active` are the entitled states
+ * (see `src/lib/billing/subscription.ts`).
+ */
+export type SubscriptionStatus =
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "incomplete"
+  | "incomplete_expired"
+  | "unpaid"
+  | "paused";
 export type ContentType = "ad_copy" | "social_post" | "email" | "landing_page";
 export type PersonaScoreStatus = "ok" | "error";
 /** Stored lifecycle of an invitation row (Day 24). Expiry is derived from
@@ -42,6 +57,23 @@ export interface CompanyRow {
   business_summary?: string | null;
   /** Content-addressed cache key for the business context; null/absent = no cache. */
   business_context_ref?: string | null;
+  /**
+   * Billing / Stripe customer model (Day 71, migration 0012). All optional
+   * because they were added after the initial schema: rows created before the
+   * migration, and the existing test fixtures, legitimately omit them, and every
+   * reader treats a missing value as "not set" (null) — a company with no Stripe
+   * linkage is on the free tier. New DB reads always carry them.
+   */
+  /** Stripe Customer id (`cus_…`); null/absent = no Stripe customer yet. */
+  stripe_customer_id?: string | null;
+  /** Stripe Subscription id (`sub_…`); null/absent = no subscription yet. */
+  stripe_subscription_id?: string | null;
+  /** Mirrored Stripe subscription status; null/absent = no subscription. */
+  subscription_status?: SubscriptionStatus | null;
+  /** When the current trial ends (ISO); null/absent = not trialing. */
+  trial_ends_at?: string | null;
+  /** When the current paid period ends (ISO); null/absent = no active period. */
+  current_period_end?: string | null;
   created_at: string;
 }
 

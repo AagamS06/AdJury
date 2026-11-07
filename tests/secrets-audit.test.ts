@@ -94,9 +94,16 @@ describe("secrets audit — .env.example completeness", () => {
     expect(audit.duplicateKeys).toEqual([]);
   });
 
-  it("the inventory lists exactly the two credentials as secret", () => {
+  it("the inventory lists exactly the known credentials as secret", () => {
+    // The three credentials the app holds: the Supabase service-role key, the AI
+    // key, and (Day 71) the Stripe secret key. Pinned exactly so a new credential
+    // can't ship unaudited.
     const secrets = ENV_VAR_POSTURE.filter((e) => e.secret).map((e) => e.name).sort();
-    expect(secrets).toEqual(["AI_API_KEY", "SUPABASE_SERVICE_ROLE_KEY"]);
+    expect(secrets).toEqual([
+      "AI_API_KEY",
+      "STRIPE_SECRET_KEY",
+      "SUPABASE_SERVICE_ROLE_KEY",
+    ]);
     // Every secret is server-only (a credential can never be NEXT_PUBLIC_).
     for (const e of ENV_VAR_POSTURE) {
       if (e.secret) expect(e.exposure, `${e.name} is server-only`).toBe("server");

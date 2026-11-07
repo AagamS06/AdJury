@@ -128,6 +128,28 @@ export const ENV_VAR_POSTURE: readonly EnvVarPosture[] = [
     required: false,
     note: "Sampling temperature (server-side config).",
   },
+  // ── Billing (Stripe — Day 71 scaffold) ──
+  {
+    name: "STRIPE_SECRET_KEY",
+    exposure: "server",
+    secret: true,
+    required: false,
+    note: "Stripe secret key — SERVER ONLY; blank ⇒ offline mock; test-mode only (Rules.md §4).",
+  },
+  {
+    name: "STRIPE_PRICE_ENTRY_MONTHLY",
+    exposure: "server",
+    secret: false,
+    required: false,
+    note: "Stripe Price id for the AUD $20/mo entry plan (server-side config).",
+  },
+  {
+    name: "STRIPE_TRIAL_DAYS",
+    exposure: "server",
+    secret: false,
+    required: false,
+    note: "Free-trial length in days, 0–90 (server-side config).",
+  },
 ];
 
 /** The declared posture for a var name, or undefined if not inventoried. */
@@ -302,11 +324,14 @@ export function auditEnvExample(exampleText: string): EnvExampleAudit {
  *  - `src/lib/db/supabase.ts` — `serverClient()` uses `SUPABASE_SERVICE_ROLE_KEY`
  *    (its own docstring: "SERVER ONLY. Never import into a client component.").
  *  - `src/lib/ai/client.ts` — `getModelClient()` uses `AI_API_KEY`.
+ *  - `src/lib/billing/stripe-client.ts` — `getBillingClient()` uses
+ *    `STRIPE_SECRET_KEY` (Day 71; its own docstring: "SERVER ONLY").
  * Paths are repo-relative (POSIX separators), matching the module-graph keys.
  */
 export const SECRET_MODULE_PATHS: readonly string[] = [
   "src/lib/db/supabase.ts",
   "src/lib/ai/client.ts",
+  "src/lib/billing/stripe-client.ts",
 ];
 
 /** `"use client"` directive at the top of a module (first statement). */

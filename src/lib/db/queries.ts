@@ -27,6 +27,7 @@ import type {
   PlanTier,
   ReviewRow,
   ReviewWithScores,
+  SubscriptionStatus,
   UserRole,
   UserRow,
 } from "@/types/db";
@@ -182,6 +183,51 @@ export async function completeCompanyOnboarding(
     .select("*")
     .single();
   if (error) fail("completeCompanyOnboarding", error);
+  return data as CompanyRow;
+}
+
+/**
+ * Fields of the Stripe customer model (DailyPlan Day 71, migration 0012) that a
+ * billing write may set. All optional — a caller updates only what changed
+ * (e.g. checkout sets the customer id; the Day-74 webhook sets the status +
+ * period fields). `null` clears a field; an omitted key leaves it untouched.
+ */
+export interface UpdateCompanyBillingParams {
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  subscription_status?: SubscriptionStatus | null;
+  trial_ends_at?: string | null;
+  current_period_end?: string | null;
+}
+
+/**
+ * Update a company's Stripe billing linkage (DailyPlan Day 71 — Stripe scaffold).
+ * Tenancy is explicit and server-derived — `companyId` comes from the session /
+ * the verified webhook, never a client (Rules.md §5) — and runs under the
+ * service-role client because `companies` has no client write policy (billing
+ * writes are server-side only), mirroring the plan-tier and onboarding writes.
+ * Only the keys present in `params` are written, so a partial update (e.g. just
+ * the customer id at checkout) never clobbers the status the webhook maintains.
+ * These columns hold non-secret Stripe reference ids, never a credential.
+ */
+export async function updateCompanyBilling(
+  db: SupabaseClient,
+  companyId: string,
+  params: UpdateCompanyBillingParams,
+): Promise<CompanyRow> {
+  const update: Record<string, string | null> = {};
+  if ("stripe_customer_id" in params) update.stripe_customer_id = params.stripe_customer_id ?? null;
+  if ("stripe_subscription_id" in params) update.stripe_subscription_id = params.stripe_subscription_id ?? null;
+  if ("subscription_status" in params) update.subscription_status = params.subscription_status ?? null;
+  if ("trial_ends_at" in params) update.trial_ends_at = params.trial_ends_at ?? null;
+  if ("current_period_end" in params) update.current_period_end = params.current_period_end ?? null;
+  const { data, error } = await db
+    .from("companies")
+    .update(update)
+    .eq("id", companyId)
+    .select("*")
+    .single();
+  if (error) fail("updateCompanyBilling", error);
   return data as CompanyRow;
 }
 

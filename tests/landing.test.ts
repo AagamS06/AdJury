@@ -31,7 +31,13 @@ import { PERSONAS } from "@/lib/ai/personas";
  */
 
 /** Routes that actually exist under `src/app` — a CTA must never dangle. */
-const REAL_ROUTES = new Set(["/signup", "/login", "/dashboard", "/review"]);
+const REAL_ROUTES = new Set([
+  "/signup",
+  "/login",
+  "/dashboard",
+  "/review",
+  "/pricing",
+]);
 
 function expectExactlyOnePrimary(ctas: readonly HeroCta[]) {
   const primaries = ctas.filter((c) => c.variant === "primary");

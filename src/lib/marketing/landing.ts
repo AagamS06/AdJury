@@ -465,6 +465,7 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
     key: "get-started",
     title: "Get started",
     links: [
+      { key: "pricing", label: "Pricing", href: "/pricing" },
       { key: "signup", label: "Start a free review", href: "/signup" },
       { key: "login", label: "Log in", href: "/login" },
     ],

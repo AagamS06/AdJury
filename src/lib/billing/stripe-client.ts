@@ -51,6 +51,95 @@ export interface CheckoutSession {
   url: string;
 }
 
+/**
+ * A provider-agnostic, normalized webhook event (DailyPlan Day 74 — checkout +
+ * webhook stub). The webhook route verifies the signature and asks the client to
+ * `constructWebhookEvent`; the client returns THIS bounded shape, so the pure
+ * policy (`interpretWebhookEvent`, `src/lib/billing/webhook.ts`) never touches a
+ * Stripe type and is fully testable with plain objects. Only the fields the
+ * billing mirror needs are extracted — never the raw event (no PII harvesting,
+ * Rules.md §3). All ids are non-secret Stripe references (`cus_…`/`sub_…`), the
+ * status is Stripe's own vocabulary, and the two timestamps are ISO strings.
+ */
+export interface NormalizedWebhookEvent {
+  /** The Stripe event id (`evt_…`), for idempotency/logging. */
+  id: string;
+  /** The Stripe event type, e.g. `customer.subscription.updated`. */
+  type: string;
+  /** The company this event is attributed to (from object metadata), or null. */
+  companyId: string | null;
+  /** The Stripe customer id on the event object, or null. */
+  customerId: string | null;
+  /** The Stripe subscription id, or null. */
+  subscriptionId: string | null;
+  /** The subscription status string (unvalidated here), or null. */
+  subscriptionStatus: string | null;
+  /** Trial end as ISO, or null. */
+  trialEndsAt: string | null;
+  /** Current period end as ISO, or null. */
+  currentPeriodEnd: string | null;
+}
+
+/** A minimal structural view of a Stripe event, so normalize is testable offline. */
+interface RawStripeEvent {
+  id?: unknown;
+  type?: unknown;
+  data?: { object?: Record<string, unknown> };
+}
+
+function asString(v: unknown): string | null {
+  return typeof v === "string" && v.length > 0 ? v : null;
+}
+
+/** A Stripe unix timestamp (seconds) → ISO string, or null when absent/invalid. */
+function isoFromUnixSeconds(v: unknown): string | null {
+  if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) return null;
+  return new Date(v * 1000).toISOString();
+}
+
+/**
+ * Normalize a raw Stripe event into the bounded {@link NormalizedWebhookEvent}.
+ * Structural (reads `data.object` defensively) so the SAME code path runs for a
+ * verified live `Stripe.Event` and for the mock's parsed JSON — one place maps
+ * Stripe's shape to the mirror, with no `any`. Unknown/irrelevant fields are
+ * simply left null; the policy layer decides what to do with the result.
+ */
+export function normalizeStripeEvent(raw: RawStripeEvent): NormalizedWebhookEvent {
+  const obj: Record<string, unknown> = raw.data?.object ?? {};
+  const type = asString(raw.type) ?? "";
+  const metadata = (obj.metadata as Record<string, unknown> | undefined) ?? {};
+  const companyId = asString(metadata.company_id);
+  const customerId = asString(obj.customer);
+
+  let subscriptionId: string | null = null;
+  let subscriptionStatus: string | null = null;
+  let trialEndsAt: string | null = null;
+  let currentPeriodEnd: string | null = null;
+
+  if (type.startsWith("customer.subscription.")) {
+    // The event object IS the subscription.
+    subscriptionId = asString(obj.id);
+    subscriptionStatus = asString(obj.status);
+    trialEndsAt = isoFromUnixSeconds(obj.trial_end);
+    currentPeriodEnd = isoFromUnixSeconds(obj.current_period_end);
+  } else if (type === "checkout.session.completed") {
+    // A completed checkout carries the new subscription id; its status/period
+    // arrive on the following subscription events.
+    subscriptionId = asString(obj.subscription);
+  }
+
+  return {
+    id: asString(raw.id) ?? "",
+    type,
+    companyId,
+    customerId,
+    subscriptionId,
+    subscriptionStatus,
+    trialEndsAt,
+    currentPeriodEnd,
+  };
+}
+
 export interface CreateCheckoutParams {
   /** The Stripe customer to attach the subscription to. */
   customerId: string;
@@ -79,6 +168,18 @@ export interface BillingClient {
    * never charges a live card (the scaffold refuses a live key).
    */
   createCheckoutSession(params: CreateCheckoutParams): Promise<CheckoutSession>;
+  /**
+   * Verify an inbound webhook and return the normalized event. The live client
+   * verifies the Stripe signature against `STRIPE_WEBHOOK_SECRET` (fails closed
+   * if unverifiable — an unsigned/forged event must never mutate billing). The
+   * mock parses the JSON body with NO signature check (offline: there is no
+   * secret and no real Stripe to sign it), so the whole webhook path is testable
+   * without a key. Throws when the payload can't be trusted/parsed.
+   */
+  constructWebhookEvent(
+    rawBody: string,
+    signature: string | null,
+  ): Promise<NormalizedWebhookEvent>;
 }
 
 /**
@@ -161,6 +262,25 @@ class StripeBillingClient implements BillingClient {
     }
     return { id: session.id, url: session.url };
   }
+
+  async constructWebhookEvent(
+    rawBody: string,
+    signature: string | null,
+  ): Promise<NormalizedWebhookEvent> {
+    const secret = env("STRIPE_WEBHOOK_SECRET");
+    if (!secret) {
+      // Fail closed: without the signing secret we cannot verify authenticity, so
+      // we refuse rather than trust an unverifiable event (Rules.md §6).
+      throw new Error("STRIPE_WEBHOOK_SECRET is not configured.");
+    }
+    if (!signature) {
+      throw new Error("Missing Stripe-Signature header.");
+    }
+    const stripe = await this.sdk();
+    // Throws on a bad/forged signature — the route maps that to a 400.
+    const event = stripe.webhooks.constructEvent(rawBody, signature, secret);
+    return normalizeStripeEvent(event as unknown as RawStripeEvent);
+  }
 }
 
 /**
@@ -188,6 +308,27 @@ export class MockBillingClient implements BillingClient {
     // real hosted checkout. Day 74 replaces this with the real session URL.
     const url = `${params.successUrl.split("?")[0].replace(/\/[^/]*$/, "")}/mock-checkout?session=${id}`;
     return { id, url };
+  }
+
+  async constructWebhookEvent(
+    rawBody: string,
+    _signature: string | null,
+  ): Promise<NormalizedWebhookEvent> {
+    // Offline: there is no signing secret and no real Stripe to sign the event,
+    // so we parse the JSON body directly (the signature is intentionally ignored)
+    // and run the SAME normalize path as the live client. This lets the whole
+    // checkout→webhook flow be exercised end-to-end with no Stripe key.
+    void _signature;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawBody);
+    } catch {
+      throw new Error("Webhook body is not valid JSON.");
+    }
+    if (typeof parsed !== "object" || parsed === null) {
+      throw new Error("Webhook body is not a JSON object.");
+    }
+    return normalizeStripeEvent(parsed as RawStripeEvent);
   }
 }
 

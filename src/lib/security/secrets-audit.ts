@@ -150,6 +150,13 @@ export const ENV_VAR_POSTURE: readonly EnvVarPosture[] = [
     required: false,
     note: "Free-trial length in days, 0–90 (server-side config).",
   },
+  {
+    name: "STRIPE_WEBHOOK_SECRET",
+    exposure: "server",
+    secret: true,
+    required: false,
+    note: "Stripe webhook signing secret (whsec_…) — SERVER ONLY; blank ⇒ offline mock (Day 74).",
+  },
 ];
 
 /** The declared posture for a var name, or undefined if not inventoried. */

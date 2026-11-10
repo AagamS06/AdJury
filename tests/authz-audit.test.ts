@@ -87,8 +87,11 @@ describe("authz audit — /api route source", () => {
     expect(methodMismatches, "inventory methods vs. on-disk handlers").toEqual([]);
   });
 
-  it("resolves identity server-side on every route", () => {
+  it("resolves identity server-side on every session-required route", () => {
     for (const a of audits) {
+      // The Stripe webhook is the one declared non-session endpoint (its trust is
+      // the verified signature, pinned below) — everything else must resolve a session.
+      if (postureFor(a.path)?.requiresSession === false) continue;
       expect(
         a.resolvesSessionServerSide,
         `${a.path} calls getSessionContext()`,
@@ -118,9 +121,14 @@ describe("authz audit — /api route source", () => {
     }
   });
 
-  it("every current endpoint requires an authenticated session", () => {
-    // Today all four /api endpoints serve a tenant's own data; none is public.
+  it("every endpoint requires an authenticated session EXCEPT the Stripe webhook", () => {
+    // Tenant endpoints (reviews, billing checkout) all require a session. The only
+    // deliberate exemption is the Stripe webhook, which is pinned by name here so
+    // no other route can quietly drop the session requirement.
+    const exempt = API_ENDPOINT_INVENTORY.filter((e) => !e.requiresSession).map((e) => e.path);
+    expect(exempt).toEqual(["api/billing/webhook/route.ts"]);
     for (const entry of API_ENDPOINT_INVENTORY) {
+      if (entry.path === "api/billing/webhook/route.ts") continue;
       expect(entry.requiresSession, `${entry.path} requiresSession`).toBe(true);
     }
   });

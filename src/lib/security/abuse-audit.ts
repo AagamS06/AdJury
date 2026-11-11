@@ -118,6 +118,23 @@ export const ABUSE_SURFACE_POSTURE: readonly AbuseSurfaceEntry[] = [
   { path: "api/reviews/export/route.ts", mechanisms: ["export-limiter"] },
   // GET single-review export (CSV/PDF) — export limiter.
   { path: "api/reviews/[id]/export/route.ts", mechanisms: ["export-limiter"] },
+  // POST starts a Stripe Checkout Session — admin-only, one Stripe call per
+  // request, no model fan-out. A per-plan limiter for billing is deferred to
+  // Day 75/76; until then it is a reviewed, declared exemption.
+  {
+    path: "api/billing/checkout/route.ts",
+    mechanisms: [],
+    exemptReason:
+      "Admin-only; creates one Stripe Checkout Session per request and triggers no model cost. Billing limiter deferred to Days 75–76.",
+  },
+  // POST receives Stripe webhooks — called by Stripe, not a user, and gated by
+  // signature verification rather than a rate limit.
+  {
+    path: "api/billing/webhook/route.ts",
+    mechanisms: [],
+    exemptReason:
+      "Stripe-only endpoint; every request is signature-verified before work and it triggers no model cost.",
+  },
 ];
 
 // ── Static scanner over route source ─────────────────────────────────────────

@@ -95,13 +95,14 @@ describe("secrets audit — .env.example completeness", () => {
   });
 
   it("the inventory lists exactly the known credentials as secret", () => {
-    // The three credentials the app holds: the Supabase service-role key, the AI
-    // key, and (Day 71) the Stripe secret key. Pinned exactly so a new credential
-    // can't ship unaudited.
+    // The credentials the app holds: the Supabase service-role key, the AI key,
+    // the Stripe secret key (Day 71), and the Stripe webhook signing secret
+    // (Day 74). Pinned exactly so a new credential can't ship unaudited.
     const secrets = ENV_VAR_POSTURE.filter((e) => e.secret).map((e) => e.name).sort();
     expect(secrets).toEqual([
       "AI_API_KEY",
       "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_SECRET",
       "SUPABASE_SERVICE_ROLE_KEY",
     ]);
     // Every secret is server-only (a credential can never be NEXT_PUBLIC_).

@@ -228,8 +228,15 @@ describe("Week 7 hardening — security & cost pass integration", () => {
     it("Day 44 — authz: every /api route resolves the session server-side, fails closed, trusts no client identity", () => {
       const audits = auditApiRoutes(API_ROUTES);
       for (const a of audits) {
-        expect(a.resolvesSessionServerSide, `${a.path} does not resolve a session`).toBe(true);
-        expect(a.sessionFailsClosed, `${a.path} does not fail closed`).toBe(true);
+        // The Stripe webhook is the declared non-session endpoint (trust = verified
+        // signature). Every other route must resolve + fail closed on a session.
+        const declaredNoSession = API_ENDPOINT_INVENTORY.find(
+          (e) => e.path === a.path && e.requiresSession === false,
+        );
+        if (!declaredNoSession) {
+          expect(a.resolvesSessionServerSide, `${a.path} does not resolve a session`).toBe(true);
+          expect(a.sessionFailsClosed, `${a.path} does not fail closed`).toBe(true);
+        }
         expect(a.clientIdentityReads, `${a.path} reads client identity`).toEqual([]);
       }
       const recon = reconcileInventory(audits);

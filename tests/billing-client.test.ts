@@ -90,4 +90,28 @@ describe("MockBillingClient — deterministic, offline", () => {
     expect(session.url).toContain("/mock-checkout?session=");
     expect(session.url).not.toContain("stripe.com");
   });
+
+  it("constructs a webhook event from JSON offline (no signature needed)", async () => {
+    // Day 74: the mock parses the body and runs the same normalize as the live
+    // client — so the webhook flow is exercisable with no key/secret.
+    const event = await mock.constructWebhookEvent(
+      JSON.stringify({
+        id: "evt_1",
+        type: "customer.subscription.updated",
+        data: { object: { id: "sub_1", customer: "cus_1", status: "active", metadata: { company_id: companyId } } },
+      }),
+      null,
+    );
+    expect(event).toMatchObject({
+      type: "customer.subscription.updated",
+      companyId,
+      customerId: "cus_1",
+      subscriptionId: "sub_1",
+      subscriptionStatus: "active",
+    });
+  });
+
+  it("throws on a non-JSON webhook body (never trusts garbage)", async () => {
+    await expect(mock.constructWebhookEvent("not json", null)).rejects.toThrow();
+  });
 });

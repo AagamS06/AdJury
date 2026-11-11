@@ -88,6 +88,15 @@ export const API_ENDPOINT_INVENTORY: readonly EndpointPosture[] = [
     methods: ["GET"],
     requiresSession: true,
   },
+  // POST starts a Stripe Checkout Session for the entry plan — admin-only (403
+  // for a member), tenant identity from the session (Day 74).
+  { path: "api/billing/checkout/route.ts", methods: ["POST"], requiresSession: true },
+  // POST receives Stripe webhooks. The ONE deliberate non-session endpoint: Stripe
+  // calls it with no user session. Its trust comes from verifying the Stripe
+  // signature (`constructWebhookEvent`) before any body field is read; the
+  // company id is the one AdJury stamped at checkout (Day 74). Declared here, in
+  // the open, so it is never an silent exemption.
+  { path: "api/billing/webhook/route.ts", methods: ["POST"], requiresSession: false },
 ];
 
 // ── Client-supplied identity fields (must never drive authz) ────────────────

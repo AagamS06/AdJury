@@ -2,11 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExportButtons } from "@/components/review/export-button";
 import { Scorecard } from "@/components/review/scorecard";
+import { canUseFeature } from "@/lib/billing/feature-gate";
 import { requireSession } from "@/lib/auth/guard";
 import { getSessionContext } from "@/lib/auth/session";
 import { createServerSupabase } from "@/lib/auth/supabase-server";
 import { getReviewById } from "@/lib/db/queries";
-import { reviewExportHref } from "@/lib/reviews/export-ui";
+import { reviewExportHref, type ExportTarget } from "@/lib/reviews/export-ui";
 import { getReviewForCompany } from "@/lib/reviews/read-reviews";
 import { reviewDetailState } from "@/lib/reviews/review-detail-view";
 
@@ -32,8 +33,13 @@ export default async function ReviewDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireSession();
+  const authed = await requireSession();
   const { id } = await params;
+
+  // Day 75 — plan gating: branded PDF reports are a paid-plan feature. We hide
+  // the PDF button for a plan that doesn't include it (the route still enforces
+  // the gate server-side — Rules.md §5); CSV is available on every plan.
+  const canExportPdf = canUseFeature(authed.company.plan_tier, "pdf_export");
 
   // Re-resolve for the core (which owns the 401/404/500 mapping); the guard
   // above has already redirected any unauthenticated caller.
@@ -73,23 +79,40 @@ export default async function ReviewDetailPage({
             Back to history
           </Link>
           {state.kind === "review" && (
-            <ExportButtons
-              groupLabel="Export this review"
-              targets={[
-                {
-                  href: reviewExportHref(id, "csv"),
-                  label: "Export CSV",
-                  format: "csv",
-                  fallbackFilename: `adjury-review-${id}.csv`,
-                },
-                {
-                  href: reviewExportHref(id, "pdf"),
-                  label: "Export PDF",
-                  format: "pdf",
-                  fallbackFilename: `adjury-review-${id}.pdf`,
-                },
-              ]}
-            />
+            <div className="flex flex-col items-end gap-2">
+              <ExportButtons
+                groupLabel="Export this review"
+                targets={[
+                  {
+                    href: reviewExportHref(id, "csv"),
+                    label: "Export CSV",
+                    format: "csv",
+                    fallbackFilename: `adjury-review-${id}.csv`,
+                  },
+                  ...(canExportPdf
+                    ? [
+                        {
+                          href: reviewExportHref(id, "pdf"),
+                          label: "Export PDF",
+                          format: "pdf",
+                          fallbackFilename: `adjury-review-${id}.pdf`,
+                        } satisfies ExportTarget,
+                      ]
+                    : []),
+                ]}
+              />
+              {!canExportPdf && (
+                <p className="text-right text-xs text-muted">
+                  Branded PDF reports are a Pro feature.{" "}
+                  <Link
+                    href="/pricing"
+                    className="font-semibold text-royal underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-bright"
+                  >
+                    View plans
+                  </Link>
+                </p>
+              )}
+            </div>
           )}
         </div>
       </div>

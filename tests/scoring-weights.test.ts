@@ -15,7 +15,7 @@ import {
   computeAggregate,
   resolveWeights,
 } from "@/lib/scoring";
-import type { CompanyRow, ReviewWithScores } from "@/types/db";
+import type { CompanyRow, PlanTier, ReviewWithScores } from "@/types/db";
 
 /**
  * Configurable per-company juror weighting (DailyPlan Day 16).
@@ -246,6 +246,12 @@ const FIXED_SCORES: Record<PersonaName, number> = {
 
 function sessionWithWeights(
   juror_weights: PersonaWeightsConfig | null,
+  // Custom juror weights are a paid-plan feature (Day 75 — `custom_juror_weights`
+  // unlocks at enterprise), and the aggregate only honors a stored config on an
+  // entitled plan. These tests exercise the weight-honoring contract, so they
+  // default to the entitled tier; the gate itself (a non-entitled plan ignores
+  // the config) is asserted explicitly below.
+  plan: PlanTier = "enterprise",
 ): SessionContext {
   return {
     authUserId: "11111111-1111-1111-1111-111111111111",
@@ -256,7 +262,7 @@ function sessionWithWeights(
       id: "22222222-2222-2222-2222-222222222222",
       name: "Acme",
       industry: null,
-      plan_tier: "free",
+      plan_tier: plan,
       juror_weights,
       onboarded_at: "2026-08-31T00:00:00.000Z",
       created_at: "2026-08-31T00:00:00.000Z",
@@ -328,6 +334,33 @@ describe("createReview honors the company's configured weights", () => {
     //   = (6 + 2.0 + 1.2) / 1.2 = 9.2 / 1.2 = 7.6̅ → 7.7
     expect(result.review.aggregate_score).toBe(7.7);
   });
+
+  // Day 75 — plan gating: the same heavy weights are IGNORED on a plan that does
+  // not include the custom-juror-weights feature, so the aggregate falls back to
+  // the equal-weight mean (6.0) regardless of the stored config.
+  it.each<PlanTier>(["free", "pro"])(
+    "ignores custom weights on the %s plan (custom_juror_weights is enterprise-only)",
+    async (plan) => {
+      const result = await createReview(BODY, {
+        session: sessionWithWeights(
+          {
+            brand_voice_guardian: 0.6,
+            compliance_legal_flagger: 0.1,
+            target_audience_fit: 0.1,
+            seo_discoverability: 0.1,
+            stop_scrolling: 0.1,
+          },
+          plan,
+        ),
+        persist: noopPersist,
+        client: fixedScoreClient(FIXED_SCORES),
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error("expected ok");
+      // Equal weighting across all six jurors: (10+8+6+4+2+6)/6 = 6.0.
+      expect(result.review.aggregate_score).toBe(6);
+    },
+  );
 });
 
 // ── Scaffold write path: updateCompanyJurorWeights ─────────────────────────

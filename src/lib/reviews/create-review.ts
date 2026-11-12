@@ -46,6 +46,7 @@ import {
   type ReviewResult,
 } from "@/lib/schema/juror";
 import { resolveWeights } from "@/lib/scoring";
+import { canUseFeature } from "@/lib/billing/feature-gate";
 import type { BrandProfileRow, ReviewWithScores } from "@/types/db";
 import { logError, errorContext } from "@/lib/observability/logger";
 
@@ -218,6 +219,15 @@ export async function createReview(
   //    juror weights (Day 16), resolved from the server session's company row
   //    (never the client — Rules.md §5); an unset/partial/invalid config safely
   //    falls back to equal weights.
+  //
+  //    Day 75 — plan gating: custom juror weights are a paid-plan feature
+  //    (`custom_juror_weights`). A plan that doesn't include it scores on equal
+  //    weights regardless of any stored config, so the gate binds at the point
+  //    the feature actually takes effect — not just where it would be edited.
+  const customWeightsAllowed = canUseFeature(
+    deps.session.company.plan_tier,
+    "custom_juror_weights",
+  );
   const review = await runReview(
     {
       content_text: parsed.data.content_text,
@@ -231,7 +241,9 @@ export async function createReview(
     },
     {
       client: deps.client,
-      weights: resolveWeights(deps.session.company.juror_weights),
+      weights: resolveWeights(
+        customWeightsAllowed ? deps.session.company.juror_weights : null,
+      ),
     },
   );
 

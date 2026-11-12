@@ -7,6 +7,13 @@ import {
 } from "@/lib/company/onboarding";
 import { CompanySettingsForm } from "@/components/company/company-settings-form";
 import { DangerZone } from "@/components/company/danger-zone";
+import { ManagePlan } from "@/components/billing/manage-plan";
+import { getBillingCatalog, getTrialDays } from "@/lib/billing/plans";
+import {
+  buildManagePlanView,
+  checkoutReturnNotice,
+  parseCheckoutParam,
+} from "@/lib/billing/manage-plan";
 
 /**
  * Company settings — admin only (DailyPlan Day 50): manage the company's plan
@@ -22,10 +29,27 @@ import { DangerZone } from "@/components/company/danger-zone";
  */
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const session = await requireAdmin();
   const { company } = session;
   const industry = industryLabel(company.industry);
+
+  // Billing / manage-plan (Day 76): derive the display state from the company's
+  // mirrored Stripe fields + the env-resolved catalog/trial, and read the
+  // checkout return (`/settings?checkout=success|canceled`, set by Day 74).
+  const managePlanView = buildManagePlanView(
+    company,
+    getBillingCatalog(),
+    getTrialDays(),
+    new Date(),
+  );
+  const checkoutNotice = checkoutReturnNotice(
+    parseCheckoutParam((await searchParams).checkout),
+  );
 
   return (
     <div>
@@ -81,6 +105,18 @@ export default async function SettingsPage() {
         <h2 className="text-xl font-bold text-ink">Plan</h2>
         <div className="mt-4 rounded-md border border-border bg-surface p-6 shadow-card">
           <CompanySettingsForm planTier={company.plan_tier} />
+        </div>
+      </section>
+
+      {/* Billing / manage plan (test mode) */}
+      <section className="mt-10 max-w-3xl">
+        <h2 className="text-xl font-bold text-ink">Billing</h2>
+        <p className="mt-1 max-w-2xl text-sm text-body">
+          View your subscription and upgrade to Pro. Checkout runs in Stripe test
+          mode — no real charges are made.
+        </p>
+        <div className="mt-4 rounded-md border border-border bg-surface p-6 shadow-card">
+          <ManagePlan view={managePlanView} notice={checkoutNotice} />
         </div>
       </section>
 

@@ -14,7 +14,8 @@
     "demo": "tsx scripts/demo-review.ts",
     "db:smoke": "tsx scripts/db-smoke.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
-    "prod:check": "tsx scripts/prod-config-check.ts"
+    "prod:check": "tsx scripts/prod-config-check.ts",
+    "deploy:smoke": "tsx scripts/deploy-smoke.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",

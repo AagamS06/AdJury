@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { UpgradeNotice } from "@/components/billing/upgrade-notice";
 import { JurorBreakdown } from "@/components/review/juror-breakdown";
 import { ScoreTrendChart } from "@/components/review/score-trend-chart";
 import { PILL_CLASSES } from "@/components/review/tone-classes";
+import { canUseFeature } from "@/lib/billing/feature-gate";
 import { requireSession } from "@/lib/auth/guard";
 import { getSessionContext } from "@/lib/auth/session";
 import { createServerSupabase } from "@/lib/auth/supabase-server";
@@ -37,19 +39,25 @@ import { formatAggregate } from "@/lib/reviews/scorecard-view";
 export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {
-  await requireSession();
+  const session = await requireSession();
+
+  // Day 75: plan gating. The analytics dashboard is a paid-plan feature. Fail
+  // closed and don't even fetch the data when the plan doesn't include it —
+  // show an upsell instead (the gate is server-side, not just a hidden nav link;
+  // Rules.md §5). `canUseFeature` treats an unknown/missing tier as free.
+  const entitled = canUseFeature(session.company.plan_tier, "analytics_dashboard");
 
   // Re-resolve for the core (which owns the 401/500 mapping); the guard above
   // has already redirected any unauthenticated caller, so this is non-null here.
-  const session = await getSessionContext().catch(() => null);
-
-  const result = await getCompanyAnalytics({
-    session,
-    fetch: async (companyId, opts) => {
-      const db = await createServerSupabase();
-      return listReviewsWithScoresByCompany(db, companyId, opts);
-    },
-  });
+  const result = entitled
+    ? await getCompanyAnalytics({
+        session: await getSessionContext().catch(() => null),
+        fetch: async (companyId, opts) => {
+          const db = await createServerSupabase();
+          return listReviewsWithScoresByCompany(db, companyId, opts);
+        },
+      })
+    : null;
 
   return (
     <div>
@@ -69,12 +77,18 @@ export default async function AnalyticsPage() {
         </Link>
       </div>
 
-      {!result.ok ? (
+      {!entitled ? (
+        <div className="mt-8">
+          <UpgradeNotice feature="analytics_dashboard" />
+        </div>
+      ) : !result || !result.ok ? (
         <p
           role="alert"
           className="mt-8 rounded-md border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger"
         >
-          {result.error}
+          {result && !result.ok
+            ? result.error
+            : "We couldn't load your analytics right now. Please try again."}
         </p>
       ) : (
         <AnalyticsBody analytics={result.analytics} />

@@ -11,6 +11,7 @@ import {
   checkExportRateLimit,
   exportRateLimitHeaders,
 } from "@/lib/reviews/export-access";
+import { checkFeatureAccess } from "@/lib/billing/feature-gate";
 import { reviewPdfFilename, reviewToPdf } from "@/lib/reviews/pdf-export";
 import { getReviewForCompany } from "@/lib/reviews/read-reviews";
 
@@ -76,6 +77,17 @@ export async function GET(
         { error: limited.error, ...limited.rateLimit },
         { status: 429, headers: exportRateLimitHeaders(limited.rateLimit) },
       );
+    }
+
+    // Day 75: plan gating. Branded PDF reports are a paid-plan feature; CSV is
+    // available on every plan. Enforce server-side (the UI only hides the PDF
+    // button as an affordance — Rules.md §5). An anon request still falls
+    // through to the read core's 401, so we never reveal the gate before auth.
+    if (format === "pdf") {
+      const gate = checkFeatureAccess(session.company.plan_tier, "pdf_export");
+      if (!gate.ok) {
+        return NextResponse.json({ error: gate.error }, { status: gate.status });
+      }
     }
   }
 

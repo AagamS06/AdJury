@@ -7,6 +7,7 @@ import { FINAL_CTA, heroCtasFor, type HeroCta } from "@/lib/marketing/landing";
 import { PricingTable } from "@/components/marketing/pricing-table";
 import { LandingFooter } from "@/components/marketing/landing-footer";
 import { MAIN_CONTENT_ID } from "@/lib/ui/a11y";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
 /**
  * Public pricing page (DailyPlan Day 73). Renders the plan catalog, per-tier
@@ -21,12 +22,15 @@ import { MAIN_CONTENT_ID } from "@/lib/ui/a11y";
  * works here too — Day 55) with exactly one `<h1>`, and the shared
  * `LandingFooter` as the closing landmark.
  */
-export const metadata: Metadata = {
-  title: "Pricing — AdJury",
+// Public, indexable page (DailyPlan Day 80) — the core adds the canonical URL,
+// OpenGraph and Twitter card; the `%s — AdJury` template adds the brand suffix.
+export const metadata: Metadata = buildPageMetadata({
+  title: "Pricing",
   description:
     "AdJury pricing — start free, upgrade when your team ships more. Every plan " +
     "runs the full jury on each submission.",
-};
+  path: "/pricing",
+});
 
 export default async function PricingPage() {
   let session: SessionContext | null = null;

@@ -153,6 +153,10 @@ export const PALETTE_SOURCE_FILES: readonly string[] = [
   "src/lib/ui/a11y.ts",
   "src/lib/reviews/pdf-export.ts",
   "src/lib/ui/palette-audit.ts",
+  // The social share image renders through `next/og` (satori), which has no CSS
+  // and no Tailwind — brand colours must be literal inline strings, exactly like
+  // the @react-pdf renderer above. So it legitimately holds raw palette hex.
+  "src/app/opengraph-image.tsx",
 ];
 
 // ── Comment stripping (preserves line numbers) ───────────────────────────────

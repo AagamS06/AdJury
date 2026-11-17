@@ -45,6 +45,7 @@ import {
   firstOnboardingIssue,
 } from "./onboarding";
 import { logError, errorContext } from "@/lib/observability/logger";
+import { trackEvent } from "@/lib/observability/monitoring";
 
 /**
  * Company onboarding server action (DailyPlan Day 22). Logic lives here, not in
@@ -110,6 +111,16 @@ export async function completeOnboardingAction(
       error: "We couldn't save your company details. Please try again.",
     };
   }
+
+  // Key product event (DailyPlan Day 81): company onboarding completed. Carries
+  // only IDs/enums (plan tier, industry), never free-text company details
+  // (Rules.md §3/§6). Emitted before the redirect, which throws internally.
+  trackEvent("company_onboarded", {
+    op: "completeOnboardingAction",
+    companyId: session.companyId,
+    planTier: parsed.data.plan_tier,
+    industry: parsed.data.industry,
+  });
 
   redirect("/dashboard");
 }

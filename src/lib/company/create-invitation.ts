@@ -23,6 +23,7 @@ import {
   inviteExpiresAt,
 } from "./invitations";
 import { logError, errorContext } from "@/lib/observability/logger";
+import { trackEvent } from "@/lib/observability/monitoring";
 
 export type CreateInvitationResult =
   | {
@@ -109,6 +110,16 @@ export async function createInvitation(
   } catch (err) {
     return failure("createInvitation/insert", companyId, err);
   }
+
+  // Key product event (DailyPlan Day 81): a teammate invitation was created.
+  // Only IDs/enums are carried — never the invitee's email or the raw token
+  // (Rules.md §3/§4/§6).
+  trackEvent("invitation_sent", {
+    op: "createInvitation",
+    companyId,
+    invitationId: invitation.id,
+    role,
+  });
 
   return { ok: true, status: 201, invitation, token };
 }

@@ -49,6 +49,7 @@ import { resolveWeights } from "@/lib/scoring";
 import { canUseFeature } from "@/lib/billing/feature-gate";
 import type { BrandProfileRow, ReviewWithScores } from "@/types/db";
 import { logError, errorContext } from "@/lib/observability/logger";
+import { trackEvent } from "@/lib/observability/monitoring";
 
 export type CreateReviewResult =
   | { ok: true; status: 201; review: ReviewResult }
@@ -313,6 +314,22 @@ export async function createReview(
       businessSource,
     },
   );
+
+  // 8. Emit the key product event (DailyPlan Day 81 — "key events are visible").
+  //    A completed review is the core product action; this makes it visible in
+  //    prod analytics. Redacted by construction (routes through the logger): only
+  //    IDs/counts/enums are carried, never the user's content or any secret
+  //    (Rules.md §3/§6).
+  trackEvent("review_completed", {
+    op: "createReview",
+    companyId: deps.session.companyId,
+    reviewId: review.review_id,
+    verdict: review.verdict,
+    aggregateScore: review.aggregate_score,
+    jurorsOk: review.jurors.filter((j) => j.status === "ok").length,
+    jurorsError: review.jurors.filter((j) => j.status === "error").length,
+    isMock: review.model.includes("(mock)"),
+  });
 
   return { ok: true, status: 201, review };
 }

@@ -66,6 +66,7 @@ export type ValueSource =
   | "Supabase dashboard"
   | "Anthropic console"
   | "Stripe dashboard"
+  | "Monitoring provider dashboard"
   | "Deployment config";
 
 /**
@@ -153,6 +154,16 @@ const PROD_ENV_OVERRIDES: Record<string, ProdEnvOverride> = {
     need: "optional",
     source: "Stripe dashboard",
     note: "Webhook signing secret; needed only when billing goes live.",
+  },
+  MONITORING_ERROR_DSN: {
+    need: "recommended",
+    source: "Monitoring provider dashboard",
+    note: "Error-monitoring ingest DSN (Day 81). Blank ⇒ offline no-op; set it + register the adapter so prod errors are visible.",
+  },
+  PRODUCT_ANALYTICS_KEY: {
+    need: "recommended",
+    source: "Monitoring provider dashboard",
+    note: "Product-analytics public project key (Day 81). Blank ⇒ offline no-op; set it + register the adapter so key events are visible.",
   },
 };
 

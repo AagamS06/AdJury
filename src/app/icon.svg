@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="AdJury">
+  <rect width="64" height="64" rx="12" fill="#0A1F44"/>
+  <path d="M20 44 L30 20 h4 L44 44 h-6.2 l-1.9-5 h-7.8 l-1.9 5 Z M30.1 33.6 h3.8 L32 28.3 Z" fill="#FFFFFF"/>
+  <rect x="18" y="48" width="28" height="4" rx="2" fill="#1E40AF"/>
+</svg>

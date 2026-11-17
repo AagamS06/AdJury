@@ -2,12 +2,19 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { SkipLink } from "@/components/ui/skip-link";
 import { ToastProvider } from "@/components/ui/toast";
+import { buildRootMetadata, resolveSiteUrl } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "AdJury — AI content critique",
-  description:
-    "Six AI juror personas review your marketing content before you publish.",
-};
+/**
+ * Site-wide metadata (DailyPlan Day 80). Built once from the pure
+ * `lib/seo/metadata.ts` core: `metadataBase` (so relative canonical/OG URLs
+ * resolve to the configured domain), a `%s — AdJury` title template, the default
+ * description, and the default OpenGraph + Twitter card. Per-page `metadata`
+ * exports add their own canonical/OG; private pages override robots to `noindex`.
+ * The origin comes from `NEXT_PUBLIC_APP_URL` (the Day-79 domain var).
+ */
+export const metadata: Metadata = buildRootMetadata(
+  resolveSiteUrl(process.env.NEXT_PUBLIC_APP_URL).url,
+);
 
 export default function RootLayout({
   children,

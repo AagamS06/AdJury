@@ -415,7 +415,12 @@ describe("Day 69 juror-count fixes", () => {
     expect(read("src/components/review/history-list.tsx")).toContain(
       `past the ${word} jurors`,
     );
-    expect(read("src/app/layout.tsx")).toMatch(
+    // The site-wide meta description moved from an inline literal in layout.tsx
+    // to the single source of truth in the Day-80 SEO core (`DEFAULT_DESCRIPTION`),
+    // which layout.tsx now consumes via `buildRootMetadata`. The invariant is
+    // unchanged — the description still states the real juror count — so the
+    // assertion follows the copy to where it now lives.
+    expect(read("src/lib/seo/metadata.ts")).toMatch(
       new RegExp(`${word} AI juror personas`, "i"),
     );
   });

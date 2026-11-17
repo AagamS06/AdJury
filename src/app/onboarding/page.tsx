@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/auth/guard";
 import { OnboardingForm } from "@/components/company/onboarding-form";
 import { MAIN_CONTENT_ID } from "@/lib/ui/a11y";
+import { buildNoindexMetadata } from "@/lib/seo/metadata";
+
+// Standalone guarded route — private setup, never indexed (DailyPlan Day 80).
+export const metadata: Metadata = buildNoindexMetadata("Set up your company");
 
 /**
  * First-admin company onboarding (DailyPlan Day 22).

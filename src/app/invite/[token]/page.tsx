@@ -1,8 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   InviteAcceptForm,
   InviteSignupForm,
 } from "@/components/company/invite-actions";
+import { buildNoindexMetadata } from "@/lib/seo/metadata";
 import { createServerSupabase } from "@/lib/auth/supabase-server";
 import {
   getInvitationByTokenHash,
@@ -34,6 +36,10 @@ import type { InvitationRow } from "@/types/db";
  * or message to show. It never reveals which tokens exist beyond "valid or not".
  */
 export const dynamic = "force-dynamic";
+
+// Public (reachable signed-out) but a bearer-token page — never index it
+// (DailyPlan Day 80). robots.txt also disallows `/invite/`.
+export const metadata: Metadata = buildNoindexMetadata("Accept your invitation");
 
 export default async function InvitePage({
   params,

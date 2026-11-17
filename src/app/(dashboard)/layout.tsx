@@ -1,9 +1,19 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { PrimaryNav } from "@/components/ui/primary-nav";
 import { MAIN_CONTENT_ID } from "@/lib/ui/a11y";
 import { signOutAction } from "@/lib/auth/actions";
 import { requireSession } from "@/lib/auth/guard";
 import { needsOnboarding } from "@/lib/company/onboarding";
+import { NOINDEX_ROBOTS } from "@/lib/seo/metadata";
+
+/**
+ * Every page behind the auth gate is private tenant data and must never be
+ * indexed (DailyPlan Day 80). Set once on the group layout so all `(dashboard)`
+ * pages inherit `noindex` — a crawler following a stray link gets the directive
+ * even before the server session gate redirects it.
+ */
+export const metadata: Metadata = { robots: NOINDEX_ROBOTS };
 
 /**
  * Dashboard shell (DailyPlan Day 4 — role-based access; Day 54 — nav/IA).

@@ -6,6 +6,7 @@ import { provisionCompanyForNewUser } from "./provisioning";
 import { credentialsSchema, firstIssue, signUpSchema } from "./schema";
 import { createServerSupabase } from "./supabase-server";
 import { logError, errorContext } from "@/lib/observability/logger";
+import { trackEvent } from "@/lib/observability/monitoring";
 
 /**
  * Auth server actions (DailyPlan Day 3) — login, signup (+ company/admin
@@ -87,6 +88,14 @@ export async function signUpAction(
       error: "We couldn't finish setting up your account. Please try again.",
     };
   }
+
+  // Key product event (DailyPlan Day 81): a new account + its first company were
+  // provisioned. Redacted by construction — only the user id, never the email or
+  // any credential (Rules.md §3/§6).
+  trackEvent("account_created", {
+    op: "signUpAction",
+    userId: data.user.id,
+  });
 
   // With email confirmation enabled the signup returns no session; the user must
   // confirm before they can log in. The company + admin rows already exist.

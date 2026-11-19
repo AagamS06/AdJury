@@ -157,6 +157,21 @@ export const ENV_VAR_POSTURE: readonly EnvVarPosture[] = [
     required: false,
     note: "Stripe webhook signing secret (whsec_…) — SERVER ONLY; blank ⇒ offline mock (Day 74).",
   },
+  // ── Prod monitoring (Day 81) ──
+  {
+    name: "MONITORING_ERROR_DSN",
+    exposure: "server",
+    secret: false,
+    required: false,
+    note: "Error-monitoring ingest DSN (Sentry-style) — non-secret ingest config; blank ⇒ offline no-op (Day 81).",
+  },
+  {
+    name: "PRODUCT_ANALYTICS_KEY",
+    exposure: "server",
+    secret: false,
+    required: false,
+    note: "Product-analytics public project key (PostHog-style) — non-secret ingest config; blank ⇒ offline no-op (Day 81).",
+  },
 ];
 
 /** The declared posture for a var name, or undefined if not inventoried. */

@@ -2,7 +2,7 @@
   "name": "adjury",
   "version": "0.1.0",
   "private": true,
-  "description": "AI-powered content critique platform — five juror personas review marketing content.",
+  "description": "AI-powered content critique platform — six juror personas review marketing content.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

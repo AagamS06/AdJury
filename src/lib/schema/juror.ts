@@ -34,15 +34,44 @@ export const VerdictSchema = z.enum(["pass", "revise", "fail"]);
 export type Verdict = z.infer<typeof VerdictSchema>;
 
 /**
- * Ad formats AdJury can review (Day 15a — multi-format input). `text` is a pure
- * copy ad; `image` is a visual ad (static creative) reviewed together with its
- * accompanying copy (caption / headline / CTA). Short- and long-form **video**
- * are planned later (they need a transcription + frame-sampling pipeline) and are
- * deliberately not in this enum yet — see DailyPlan Week 13+/PRD §6.3.
+ * Ad formats AdJury's engine can review.
+ *
+ * - `text` (Day 15a) — a pure copy ad.
+ * - `image` (Day 15a) — a visual ad (static creative) reviewed together with its
+ *   accompanying copy (caption / headline / CTA).
+ * - `video_short` (Day 85) — a short-form video ad. The engine never sees raw
+ *   video: the short-form pipeline (`src/lib/video/short-form.ts`) reduces the
+ *   clip to a bounded analysis (transcript + on-screen text + sampled keyframes),
+ *   then reviews it through the **same six jurors** by attaching a representative
+ *   keyframe as the vision input and folding the transcript / on-screen text /
+ *   caption into the copy. So from the jurors' point of view a `video_short` ad is
+ *   a keyframe + copy, exactly like an `image` ad — no new juror, no new provider.
+ *
+ * Long-form **video** (`video_long`) is a later phase (it needs a cost/latency
+ * sampling + chunking strategy — PRD §6.3 / DailyPlan Week 13) and is deliberately
+ * NOT in this enum yet; widen it (and the DB check + the live ingestion front door)
+ * in the migration that ships long-form.
  */
-export const MEDIA_TYPES = ["text", "image"] as const;
+export const MEDIA_TYPES = ["text", "image", "video_short"] as const;
 export const MediaTypeSchema = z.enum(MEDIA_TYPES);
 export type MediaType = z.infer<typeof MediaTypeSchema>;
+
+/**
+ * The ad formats a client may submit directly to `POST /api/reviews` *today*.
+ *
+ * Deliberately a subset of {@link MEDIA_TYPES}: the engine understands and can
+ * review `video_short` (via the short-form pipeline), but the public upload front
+ * door for video — object storage for the clip plus the server-side
+ * ffmpeg/transcription/OCR that produces the analysis — is gated on infrastructure
+ * this build does not have (see `src/lib/video/short-form.ts` and
+ * `docs/VIDEO_REVIEW.md`). Until that ships, the request boundary accepts only the
+ * formats a browser can submit in one request (`text`, `image`); a `video_short`
+ * POST is rejected as an unknown format. This keeps the public endpoint honest
+ * without hiding that the engine is already video-capable.
+ */
+export const SUBMITTABLE_MEDIA_TYPES = ["text", "image"] as const;
+export const SubmittableMediaTypeSchema = z.enum(SUBMITTABLE_MEDIA_TYPES);
+export type SubmittableMediaType = z.infer<typeof SubmittableMediaTypeSchema>;
 
 export const IssueSchema = z.object({
   severity: SeveritySchema,
@@ -81,7 +110,7 @@ export type JurorSlot = z.infer<typeof JurorSlotSchema>;
 export const ReviewResultSchema = z.object({
   review_id: z.string(),
   content_type: z.string(),
-  /** Ad format (Day 15a): `text` or `image`. Defaults to `text` for back-compat. */
+  /** Ad format (Day 15a/85): `text`, `image`, or `video_short`. Defaults to `text` for back-compat. */
   media_type: MediaTypeSchema.default("text"),
   platform: z.string().nullable(),
   model: z.string(),
@@ -145,38 +174,47 @@ const ReviewFields = z.object({
    * when the company has no usable identity.
    */
   business_context: z.string().nullable().default(null),
-  /** Ad format (Day 15a). Defaults to `text` so every existing caller is unchanged. */
+  /** Ad format (Day 15a/85). Defaults to `text` so every existing caller is unchanged. */
   media_type: MediaTypeSchema.default("text"),
   /**
-   * The image for an `image` ad; null for a `text` ad. For an image ad the
-   * `content_text` carries the accompanying copy (caption / headline / CTA) that
-   * every juror reviews alongside the visual, so it stays required.
+   * The visual attached to a non-text ad: the creative for an `image` ad, or a
+   * representative keyframe for a `video_short` ad (Day 85); null for a `text` ad.
+   * For both visual formats the `content_text` carries the accompanying copy every
+   * juror reviews alongside the visual (for a video, the transcript + on-screen
+   * text + caption the pipeline folds together), so it stays required.
    */
   image: ReviewImageSchema.nullable().default(null),
 });
 
 /**
- * Require the image when (and only when) the ad is an image ad. Keeps the two
- * fields consistent at the boundary (Rules.md §6) rather than trusting them to
- * match. A `text` ad with a stray image is rejected too, so the format a juror is
- * told about always matches what it is given.
+ * Keep `media_type` and `image` consistent at the boundary (Rules.md §6) rather
+ * than trusting them to match, so the format a juror is told about always matches
+ * what it is given. A visual format (`image`, or `video_short` — whose visual is a
+ * representative keyframe, Day 85) must carry an image; a `text` ad must not.
  */
 function refineMedia(
   data: { media_type: MediaType; image: ReviewImage | null },
   ctx: z.RefinementCtx,
 ): void {
-  if (data.media_type === "image" && !data.image) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["image"],
-      message: "An image is required for an image ad.",
-    });
+  if (data.media_type === "text") {
+    if (data.image) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["image"],
+        message: "A text ad must not include an image.",
+      });
+    }
+    return;
   }
-  if (data.media_type === "text" && data.image) {
+  // image | video_short — a visual is required.
+  if (!data.image) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["image"],
-      message: "A text ad must not include an image.",
+      message:
+        data.media_type === "video_short"
+          ? "A representative keyframe is required for a short-form video ad."
+          : "An image is required for an image ad.",
     });
   }
 }
@@ -192,12 +230,19 @@ export type ReviewInput = z.infer<typeof ReviewInputSchema>;
  * server-side — none of these are ever trusted from the client (Rules.md §5). The
  * client does choose the ad `media_type` and supply the `image`, which the same
  * media refinement keeps consistent.
+ *
+ * `media_type` here is narrowed to {@link SUBMITTABLE_MEDIA_TYPES} (`text` |
+ * `image`): the engine can review `video_short` (Day 85), but a client can't yet
+ * POST one — the video upload front door (object storage + server-side
+ * ffmpeg/transcription/OCR) is gated on infrastructure this build lacks, so the
+ * boundary rejects a `video_short` request as an unknown format until it ships.
  */
 export const ReviewRequestSchema = ReviewFields.pick({
   content_text: true,
   content_type: true,
   platform: true,
-  media_type: true,
   image: true,
-}).superRefine(refineMedia);
+})
+  .extend({ media_type: SubmittableMediaTypeSchema.default("text") })
+  .superRefine(refineMedia);
 export type ReviewRequest = z.infer<typeof ReviewRequestSchema>;

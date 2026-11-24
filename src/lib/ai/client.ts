@@ -23,8 +23,18 @@ export interface CompleteImage {
 export interface CompleteArgs {
   system: string;
   user: string;
-  /** Persona hint — used only by the mock to shape plausible output. */
-  persona: PersonaName;
+  /**
+   * Persona hint — used only by the mock to shape plausible juror output. The
+   * live provider ignores it. Every *juror* call sets it (the orchestrator
+   * always passes `persona.name`). It is **optional** so a non-juror caller can
+   * omit it: the Draft Assistant (DailyPlan Day 87) uses the same provider via
+   * this client to *generate* ad copy, and it is deliberately **not** a juror —
+   * carrying no persona keeps that separation true at the type level (the jury
+   * never grades AdJury's own drafts; see `src/lib/draft/draft-assistant.ts`).
+   * The offline mock only knows how to produce juror JSON, so it rejects a call
+   * with no persona rather than return juror-shaped output to a non-juror caller.
+   */
+  persona?: PersonaName;
   /**
    * The ad image for an image ad (Day 15a). When present it is sent to the model
    * as a vision input alongside the text prompt, so each juror reviews the visual
@@ -148,6 +158,15 @@ class MockClient implements ModelClient {
     // resolves synchronously, so in practice a timeout never fires against it.
     if (args.signal?.aborted) {
       throw new DOMException("The operation was aborted.", "AbortError");
+    }
+    // The mock only knows how to produce juror JSON. A call with no persona is a
+    // non-juror caller (e.g. the Draft Assistant, Day 87) that must use its own
+    // offline stand-in instead of the shared juror mock — fail loudly rather than
+    // hand back juror-shaped output.
+    if (!args.persona) {
+      throw new Error(
+        "The offline mock only generates juror output; a non-juror caller must supply its own offline generator (see src/lib/draft/draft-assistant.ts) or configure AI_API_KEY for a live model.",
+      );
     }
     const content = extractContent(args.user);
     return JSON.stringify(mockJuror(args.persona, content));

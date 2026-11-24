@@ -257,7 +257,7 @@ describe("createReview — brand context (Day 27)", () => {
       model: "test-model",
       isMock: true,
       complete: async ({ persona, user }) => {
-        calls.push({ persona, user });
+        calls.push({ persona: persona!, user });
         return JSON.stringify({
           persona,
           score: 8,
@@ -407,7 +407,7 @@ describe("createReview — brand-voice cache reuse (Day 30)", () => {
       model: "test-model",
       isMock: true,
       complete: async ({ persona, user }) => {
-        calls.push({ persona, user });
+        calls.push({ persona: persona!, user });
         return JSON.stringify({
           persona,
           score: 8,

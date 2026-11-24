@@ -42,9 +42,9 @@ function creative(overrides: Partial<ShortFormVideoCreative> = {}): ShortFormVid
 }
 
 describe("media type vocabulary — engine vs submittable", () => {
-  it("adds video_short to the engine formats, keeps video_long out", () => {
-    expect([...MEDIA_TYPES]).toEqual(["text", "image", "video_short"]);
-    expect((MEDIA_TYPES as readonly string[]).includes("video_long")).toBe(false);
+  it("has video_short as an engine format (video_long added alongside in Day 86)", () => {
+    expect([...MEDIA_TYPES]).toEqual(["text", "image", "video_short", "video_long"]);
+    expect((MEDIA_TYPES as readonly string[]).includes("video_short")).toBe(true);
   });
 
   it("does NOT make video_short client-submittable yet (live ingestion gated)", () => {

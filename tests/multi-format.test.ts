@@ -81,12 +81,12 @@ describe("media type + image contract", () => {
     expect(result.success).toBe(false);
   });
 
-  it("ships text, image, and short-form video as engine formats (long-form is a later phase)", () => {
-    // Day 85 added short-form video to the engine vocabulary (reviewed via the
-    // pipeline in lib/video/short-form.ts). Long-form video is deliberately still
-    // absent until its sampling/chunking cost strategy exists (PRD §6.3).
-    expect([...MEDIA_TYPES]).toEqual(["text", "image", "video_short"]);
-    expect((MEDIA_TYPES as readonly string[]).includes("video_long")).toBe(false);
+  it("ships text, image, short-form and long-form video as engine formats", () => {
+    // Day 85 added short-form video to the engine vocabulary, and Day 86 added
+    // long-form video (both reviewed via the pipelines in lib/video/*). Both video
+    // formats are engine-only — kept out of SUBMITTABLE_MEDIA_TYPES until the live
+    // ingestion front door ships (PRD §6.3).
+    expect([...MEDIA_TYPES]).toEqual(["text", "image", "video_short", "video_long"]);
   });
 });
 

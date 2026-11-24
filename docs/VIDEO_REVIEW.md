@@ -80,11 +80,13 @@ offline (`npm run video:check`, reported as `manual` items by
    a `video_short` request as an unknown format, so the public endpoint stays
    honest while the engine is already video-capable.
 
-**Long-form video** (`video_long`) is the next phase: the same pipeline at scale,
-needing a sampling/chunking cost strategy because a naive pass breaks the
-<$0.01/review and <15s targets (PRD §8). It is intentionally still absent from the
-engine vocabulary.
+**Long-form video** (`video_long`) shipped next, as DailyPlan Day 86 — the same
+reduction at scale, with a sampling/chunking cost strategy so the fan-out stays
+bounded regardless of clip length (a naive pass would break the <$0.01/review and
+<15s targets — PRD §8). Like short-form it is an **engine** format only, still gated
+out of `SUBMITTABLE_MEDIA_TYPES` until live ingestion ships. See
+[LONG_FORM_VIDEO.md](LONG_FORM_VIDEO.md).
 
 ---
 
-_Related: [PRD.md](../PRD.md) §6.3 · [Architecture.md](../Architecture.md) §5 · [DailyPlan.md](../DailyPlan.md) Day 85 · `src/lib/video/short-form.ts`_
+_Related: [PRD.md](../PRD.md) §6.3 · [Architecture.md](../Architecture.md) §5 · [DailyPlan.md](../DailyPlan.md) Day 85 · [LONG_FORM_VIDEO.md](LONG_FORM_VIDEO.md) · `src/lib/video/short-form.ts`_

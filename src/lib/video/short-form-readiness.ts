@@ -61,9 +61,8 @@ export interface ShortFormReconcile {
  * Prove the short-form pipeline is internally coherent and drift-free (the
  * executable DoD, minus the async jury run the script/tests cover):
  *  - the duration + keyframe bounds are sane;
- *  - `video_short` is an engine format but NOT a client-submittable one, and
- *    `video_long` is still absent (the gating invariant that keeps the public
- *    endpoint honest until live ingestion ships);
+ *  - `video_short` is an engine format but NOT a client-submittable one (the gating
+ *    invariant that keeps the public endpoint honest until live ingestion ships);
  *  - the offline processor is deterministic, bounded, and invents nothing;
  *  - the reduction yields a schema-valid `video_short` review input with a keyframe
  *    and non-empty, budget-bounded copy.
@@ -80,16 +79,15 @@ export function reconcileShortFormVideo(
   if (!(MIN_KEYFRAMES >= 1)) failures.push("MIN_KEYFRAMES must be ≥ 1");
   if (!(MAX_KEYFRAMES >= MIN_KEYFRAMES)) failures.push("MAX_KEYFRAMES must be ≥ MIN_KEYFRAMES");
 
-  // Vocabulary gating: the engine knows video_short, the public endpoint does not,
-  // and long-form is not shipped yet.
+  // Vocabulary gating: the engine knows video_short, the public endpoint does not.
+  // (Long-form video shipped as Day 86 — it is now an engine format too; its own
+  // gating is checked by reconcileLongFormVideo, so this guard no longer asserts
+  // video_long's absence.)
   if (!(MEDIA_TYPES as readonly string[]).includes("video_short")) {
     failures.push("video_short must be an engine media type");
   }
   if ((SUBMITTABLE_MEDIA_TYPES as readonly string[]).includes("video_short")) {
     failures.push("video_short must NOT be client-submittable until live ingestion ships");
-  }
-  if ((MEDIA_TYPES as readonly string[]).includes("video_long")) {
-    failures.push("video_long is a later phase and must not be shipped yet");
   }
 
   // The sample must pass the guard (non-vacuous), else the checks below are moot.

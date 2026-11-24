@@ -68,16 +68,17 @@ export function buildUserPrompt(input: ReviewInput, persona: Persona): string {
     ? [`Business context (what this ad is for):\n${input.business_context}\n`]
     : [];
 
-  // Multi-format input (Day 15a/85): tell the juror what it is reviewing. For a
+  // Multi-format input (Day 15a/85/86): tell the juror what it is reviewing. For a
   // visual ad the image is attached as a separate vision block (see `runReview`),
   // and the text between the markers is the ad's accompanying copy. For an image ad
-  // that copy is the caption / headline / CTA; for a short-form video ad the
-  // short-form pipeline (`lib/video/short-form.ts`) folds the transcript, on-screen
-  // text, and caption into that copy and attaches a representative keyframe, so the
-  // juror reviews the clip the same way it reviews an image ad. For a text ad the
-  // content is the ad copy itself.
+  // that copy is the caption / headline / CTA; for a short- or long-form video ad the
+  // video pipeline (`lib/video/short-form.ts` / `lib/video/long-form.ts`) folds the
+  // transcript, on-screen text, and caption into that copy and attaches a
+  // representative keyframe, so the juror reviews the clip the same way it reviews an
+  // image ad. For a text ad the content is the ad copy itself.
   const isImage = input.media_type === "image";
   const isVideoShort = input.media_type === "video_short";
+  const isVideoLong = input.media_type === "video_long";
   let formatBlock: string[] = [];
   let contentLabel = `Review the content between the delimiter lines below as the ${persona.title}.`;
   if (isImage) {
@@ -90,6 +91,11 @@ export function buildUserPrompt(input: ReviewInput, persona: Persona): string {
       "Ad format: SHORT-FORM VIDEO. A representative keyframe from the video is attached to this message — review it together with the video's transcript, on-screen text, and accompanying copy below (judge the ad as a viewer would experience the clip).\n",
     ];
     contentLabel = `Review the attached short-form video ad — its keyframe and the transcript / on-screen text / copy between the delimiter lines below — as the ${persona.title}.`;
+  } else if (isVideoLong) {
+    formatBlock = [
+      "Ad format: LONG-FORM VIDEO. A representative keyframe sampled from across the video is attached to this message — review it together with the video's transcript, on-screen text, and accompanying copy below (judge the ad as a viewer would experience the full clip, including whether it holds attention over its length).\n",
+    ];
+    contentLabel = `Review the attached long-form video ad — its keyframe and the transcript / on-screen text / copy between the delimiter lines below — as the ${persona.title}.`;
   }
 
   return [

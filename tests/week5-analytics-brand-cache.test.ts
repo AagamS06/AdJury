@@ -87,7 +87,7 @@ class CapturingClient implements ModelClient {
   readonly prompts = new Map<PersonaName, string>();
 
   async complete(args: CompleteArgs): Promise<string> {
-    this.prompts.set(args.persona, args.user);
+    this.prompts.set(args.persona!, args.user);
     // Valid juror JSON so the review doesn't degrade — the brand context under
     // test is carried in the prompt, which we assert on, not in the output.
     return JSON.stringify({

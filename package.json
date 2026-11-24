@@ -20,7 +20,8 @@
     "demo:check": "tsx scripts/demo-script-check.ts",
     "launch:check": "tsx scripts/launch-check.ts",
     "video:check": "tsx scripts/video-check.ts",
-    "video:check:long": "tsx scripts/long-form-check.ts"
+    "video:check:long": "tsx scripts/long-form-check.ts",
+    "draft:check": "tsx scripts/draft-check.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",

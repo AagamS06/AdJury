@@ -74,10 +74,11 @@ function recordingClient(behaviors: Partial<Record<PersonaName, Behavior[]>> = {
     isMock: true,
     async complete(args: CompleteArgs): Promise<string> {
       calls.push(args);
-      const next = queues[args.persona]?.shift();
+      const persona = args.persona!;
+      const next = queues[persona]?.shift();
       if (next && "throw" in next) throw next.throw;
       if (next && "return" in next) return next.return;
-      return validJurorJson(args.persona);
+      return validJurorJson(persona);
     },
   };
 

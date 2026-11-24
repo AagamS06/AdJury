@@ -225,7 +225,7 @@ function fixedScoreClient(scores: Record<PersonaName, number>): ModelClient {
     complete: async ({ persona }) =>
       JSON.stringify({
         persona,
-        score: scores[persona],
+        score: scores[persona!],
         confidence: "medium",
         summary: "fixed",
         issues: [],

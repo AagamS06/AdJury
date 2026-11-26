@@ -21,17 +21,24 @@
  * review read path — exactly how the live model client swaps in behind the
  * offline mock in `lib/ai/client.ts`.
  *
- * ── Live research (needs credentials / network — owner action) ───────────────
+ * ── Live research (DailyPlan Day 88 — needs credentials / network) ───────────
  * The offline researcher summarizes only the inputs the company already gave us.
- * To ground reviews in what the site actually says, wire a `BusinessResearcher`
- * that calls Claude's web search tool (web_search) over `website_url` + name, and
- * run it once per identity change (on save), caching the result here. That needs
- * a live `AI_API_KEY` + outbound network, neither of which exists in the cloud
- * build, so it is left as a documented seam — the cache/plumbing/reviews are all
- * proven offline today.
+ * To ground reviews in what the site actually *says*, {@link modelBusinessResearcher}
+ * makes ONE Claude call with the server-side web-search tool over the company's
+ * name + website (Rules.md §2 — one provider behind `lib/ai/client.ts`), and
+ * {@link computeBusinessContextCacheAsync} runs it once per identity change (on
+ * save), caching the bounded result here exactly like the offline floor — so the
+ * read path is still a plain cache lookup and cost per review is unchanged. The
+ * live call needs a live `AI_API_KEY` + outbound network (the offline mock cannot
+ * search, so the researcher refuses to run on it); {@link researchBusinessContext}
+ * is the convenience that prefers the live researcher when configured and falls
+ * back to the deterministic offline floor otherwise. Wiring it into the
+ * onboarding/save action is the one remaining operator step (see
+ * `docs/BUSINESS_RESEARCH.md`); the whole seam is proven offline today.
  */
 import { createHash } from "node:crypto";
 import type { CompanyRow } from "@/types/db";
+import type { ModelClient } from "@/lib/ai/client";
 
 /**
  * Bump when the summarization/research algorithm changes so every stored
@@ -184,6 +191,109 @@ export function businessContextRef(identity: BusinessIdentity): string {
   return `${REF_PREFIX}${BUSINESS_CONTEXT_VERSION}-${hash}`;
 }
 
+// ── Live, web-search-backed research (DailyPlan Day 88) ──────────────────────
+
+/**
+ * How many web searches the live researcher may run in its single call. A small
+ * cap keeps research cost predictable (Rules.md §1): one or two searches over a
+ * company's own site is plenty to describe what it does.
+ */
+export const MAX_RESEARCH_SEARCHES = 3;
+
+/** Output-token ceiling for the research call — a bounded summary, not an essay. */
+export const RESEARCH_MAX_OUTPUT_TOKENS = 400;
+
+/**
+ * An async researcher — the live counterpart to the synchronous
+ * {@link BusinessResearcher}. Separate interface (rather than widening the sync
+ * one) so the offline write path and its callers are untouched: the live path
+ * opts in by calling {@link computeBusinessContextCacheAsync} /
+ * {@link researchBusinessContext}.
+ */
+export interface AsyncBusinessResearcher {
+  /** Provenance recorded for observability (`offline` or the live model name). */
+  readonly name: string;
+  research(identity: BusinessIdentity): Promise<string>;
+}
+
+/**
+ * System prompt for live research. It is deliberately strict about grounding
+ * (Rules.md §3 "grounded, not invented"): the model may describe only what it can
+ * actually find about the business, must invent no facts, and must stay brief.
+ */
+export const BUSINESS_RESEARCH_SYSTEM_PROMPT =
+  "You research what a business does so an ad reviewer knows the field and " +
+  "audience the ad is for. Use the web_search tool to look up the company's own " +
+  "website and public pages. Describe ONLY what you can verify from those " +
+  "sources: the field it operates in, what it offers, and who its likely " +
+  "audience is. Never invent facts — no made-up products, revenue, customers, " +
+  "claims, or statistics. If you cannot find reliable information, say only what " +
+  "the provided name, industry, and website indicate, and no more. Reply with a " +
+  `single plain-text paragraph of at most ${MAX_BUSINESS_SUMMARY_CHARS} characters ` +
+  "and nothing else (no markdown, no citations, no preamble).";
+
+/** Assemble the research user prompt from a company's identity. */
+export function buildBusinessResearchPrompt(identity: BusinessIdentity): string {
+  const { name, industry, website } = identityBasis(identity);
+  return [
+    `Business name: ${name || "(not given)"}`,
+    `Stated industry: ${industry || "(not given)"}`,
+    `Website: ${website || "(not given)"}`,
+    "Research this business and summarize it for an ad reviewer.",
+  ].join("\n");
+}
+
+/**
+ * Live, web-search-backed researcher — one Claude call with the server-side
+ * web_search tool (Rules.md §2 — one provider). Grounding comes from the search
+ * (the model is told to describe only what it finds), and the output is bounded
+ * to {@link MAX_BUSINESS_SUMMARY_CHARS} like every cached summary. Model output
+ * is untrusted text, so it is normalized + bounded before use (Rules.md §3).
+ *
+ * The offline mock cannot search the web (it only produces juror JSON), so this
+ * refuses to run on it — use {@link offlineBusinessResearcher} with no key, or
+ * set `AI_API_KEY` for live research. A higher temperature than scoring is
+ * correct here: this is descriptive summarization, not the deterministic,
+ * low-temperature *judgement* Rules.md §3 reserves for the jurors.
+ */
+export function modelBusinessResearcher(
+  client: ModelClient,
+  opts: { temperature?: number; maxSearches?: number } = {},
+): AsyncBusinessResearcher {
+  return {
+    name: client.model,
+    async research(identity) {
+      if (client.isMock) {
+        throw new Error(
+          "The offline mock cannot research the web. Use offlineBusinessResearcher (no key needed), or configure AI_API_KEY for live web-search research.",
+        );
+      }
+      if (!hasBusinessIdentity(identity)) return "";
+      const raw = await client.complete({
+        system: BUSINESS_RESEARCH_SYSTEM_PROMPT,
+        user: buildBusinessResearchPrompt(identity),
+        webSearch: { maxUses: Math.max(1, Math.floor(opts.maxSearches ?? MAX_RESEARCH_SEARCHES)) },
+        maxOutputTokens: RESEARCH_MAX_OUTPUT_TOKENS,
+        temperature: opts.temperature ?? 0.3,
+      });
+      return boundSummary(raw);
+    },
+  };
+}
+
+/**
+ * Pick the researcher to use for the live write path: the live, web-search
+ * researcher when the client is real, otherwise none (the caller falls back to
+ * the deterministic offline floor). Returns `null` for the mock so a caller can
+ * decide its fallback explicitly rather than silently get offline output from a
+ * "live" researcher.
+ */
+export function resolveLiveBusinessResearcher(
+  client: ModelClient,
+): AsyncBusinessResearcher | null {
+  return client.isMock ? null : modelBusinessResearcher(client);
+}
+
 /** The cached summary + key written to `companies` on an identity change. */
 export interface BusinessContextCache {
   /** Bounded, reusable business summary; null when there is nothing to research. */
@@ -209,6 +319,69 @@ export function computeBusinessContextCache(
     return { summary: null, contextRef: null };
   }
   return { summary, contextRef: businessContextRef(identity) };
+}
+
+/**
+ * Async counterpart of {@link computeBusinessContextCache} for the live,
+ * web-search-backed researcher (DailyPlan Day 88). Same contract — nothing to
+ * research caches nothing; otherwise a bounded summary + the identity-keyed ref —
+ * but the researcher may make a network/model call. The cache key is unchanged
+ * (identity + algorithm version), so a live-researched summary and an offline one
+ * for the same identity share a ref and the read path stays a plain lookup.
+ * Called once per onboarding/website change (write side), never per review.
+ */
+export async function computeBusinessContextCacheAsync(
+  identity: BusinessIdentity,
+  researcher: AsyncBusinessResearcher,
+): Promise<BusinessContextCache> {
+  if (!hasBusinessIdentity(identity)) {
+    return { summary: null, contextRef: null };
+  }
+  const summary = boundSummary(await researcher.research(identity));
+  if (summary.length === 0) {
+    return { summary: null, contextRef: null };
+  }
+  return { summary, contextRef: businessContextRef(identity) };
+}
+
+/** How a researched summary was produced — for observability + the readiness report. */
+export type ResearchSource = "live" | "offline" | "none";
+
+/** The result of researching a business: the summary, cache ref, and how it was sourced. */
+export interface BusinessResearchResult extends BusinessContextCache {
+  source: ResearchSource;
+}
+
+/**
+ * Research a business for the write path, preferring the live researcher when one
+ * is configured and **always** falling back to the deterministic offline floor —
+ * so the save path never fails or produces nothing just because a live key is
+ * absent or a web search turns up empty (Rules.md §6 fail-safe). With no live
+ * researcher (`null`), or if the live call yields nothing or throws, the offline
+ * summary is used. This is the function the onboarding/save action would call to
+ * "swap in" live research behind the seam without any other code change.
+ */
+export async function researchBusinessContext(
+  identity: BusinessIdentity,
+  live: AsyncBusinessResearcher | null,
+): Promise<BusinessResearchResult> {
+  if (!hasBusinessIdentity(identity)) {
+    return { summary: null, contextRef: null, source: "none" };
+  }
+  if (live) {
+    try {
+      const cache = await computeBusinessContextCacheAsync(identity, live);
+      if (cache.summary) return { ...cache, source: "live" };
+    } catch {
+      // Live research is best-effort grounding; never let it break a save. Fall
+      // through to the offline floor (no secrets/PII in logs — Rules.md §6; the
+      // caller logs the failure with context if it wants to).
+    }
+  }
+  const offline = computeBusinessContextCache(identity);
+  return offline.summary
+    ? { ...offline, source: "offline" }
+    : { summary: null, contextRef: null, source: "none" };
 }
 
 /** Whether a company's stored business-context cache is current for its identity. */

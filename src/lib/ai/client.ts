@@ -20,6 +20,19 @@ export interface CompleteImage {
   mimeType: string;
 }
 
+/**
+ * Request live web-search grounding for a call (DailyPlan Day 88 — live business
+ * research). When present, the live provider attaches Claude's server-side
+ * `web_search` tool so the model grounds its answer in what pages actually say
+ * rather than its own recollection — that is what keeps a researched business
+ * summary "grounded, not invented" (Rules.md §3). Never set on a juror call (the
+ * jury does not browse the web); the offline mock ignores it.
+ */
+export interface WebSearchOptions {
+  /** Hard cap on the number of searches the model may run in this one call (cost bound). */
+  maxUses: number;
+}
+
 export interface CompleteArgs {
   system: string;
   user: string;
@@ -41,6 +54,18 @@ export interface CompleteArgs {
    * together with its copy. Omitted/null for a text ad.
    */
   image?: CompleteImage | null;
+  /**
+   * Request Claude's server-side web search for this call (DailyPlan Day 88).
+   * Used only by the live business researcher; omitted for every juror call. The
+   * offline mock ignores it (and the researcher refuses to run on the mock).
+   */
+  webSearch?: WebSearchOptions | null;
+  /**
+   * Override the per-call output-token cap. Juror calls use the cost-guardrail
+   * default (`MAX_OUTPUT_TOKENS_PER_JUROR`); a non-juror caller (e.g. business
+   * research) can request a different bound. Omitted ⇒ the juror default.
+   */
+  maxOutputTokens?: number;
   temperature?: number;
   /**
    * Abort signal for provider resilience (DailyPlan Day 19). The orchestrator's
@@ -91,22 +116,50 @@ class AnthropicClient implements ModelClient {
     const content = args.image
       ? [imageContentBlock(args.image), { type: "text" as const, text: args.user }]
       : args.user;
+    const params: AnthropicSdk.MessageCreateParamsNonStreaming = {
+      model: this.model,
+      // Cap output tokens (cost guardrail — DailyPlan Day 18). Jurors use the
+      // per-juror default; a non-juror caller may raise/lower it (Day 88).
+      max_tokens: args.maxOutputTokens ?? MAX_OUTPUT_TOKENS_PER_JUROR,
+      temperature: args.temperature ?? 0.2,
+      system: args.system,
+      messages: [{ role: "user", content }],
+    };
+    if (args.webSearch) {
+      // The server-side web_search tool is not in this SDK version's typed tool
+      // union (same gap noted for the URL image source above), so it is attached
+      // at the request boundary with one narrow cast. A newer SDK sends it as-is.
+      (params as unknown as { tools: unknown[] }).tools = [webSearchToolParam(args.webSearch)];
+    }
     const res = await client.messages.create(
-      {
-        model: this.model,
-        // Cap output tokens per juror call (cost guardrail — DailyPlan Day 18).
-        max_tokens: MAX_OUTPUT_TOKENS_PER_JUROR,
-        temperature: args.temperature ?? 0.2,
-        system: args.system,
-        messages: [{ role: "user", content }],
-      },
+      params,
       // Thread the orchestrator's timeout abort signal into the request so a
       // hung call is genuinely cancelled (DailyPlan Day 19).
       { signal: args.signal },
     );
-    const block = res.content.find((b) => b.type === "text");
-    return block && "text" in block ? block.text : "";
+    // Join every text block. For a juror call there is exactly one (so this is
+    // identical to taking the first); for a web-search call the model's final
+    // answer can span several text blocks interleaved with tool results.
+    return res.content
+      .map((b) => (b.type === "text" && "text" in b ? b.text : ""))
+      .filter((t) => t.length > 0)
+      .join("\n")
+      .trim();
   }
+}
+
+/**
+ * Build Claude's server-side web-search tool param (DailyPlan Day 88). Kept as a
+ * plain object — the installed SDK (0.32.1) predates the typed server-tool union
+ * — and attached via the one cast in `complete`. `max_uses` bounds the searches
+ * per call so research cost stays predictable (Rules.md §1 cost discipline).
+ */
+function webSearchToolParam(opts: WebSearchOptions): Record<string, unknown> {
+  return {
+    type: "web_search_20250305",
+    name: "web_search",
+    max_uses: Math.max(1, Math.floor(opts.maxUses)),
+  };
 }
 
 /**

@@ -210,18 +210,55 @@ export interface DraftAssistantReadiness {
 }
 
 /**
+ * Evidence that the public Draft Assistant surface (DailyPlan Day 89) actually
+ * ships: the `/draft` page and the `POST /api/draft` route exist on disk, and
+ * their source carries no jury coupling (the separation invariant must extend to
+ * the surface, not just the generator core). Supplied by the caller — the
+ * script/tests read the files with `fs` and scan their imports — so this module
+ * stays pure (the `*-audit` pattern: take evidence as input, don't do I/O).
+ */
+export interface DraftSurfaceEvidence {
+  /** The `/draft` page (`src/app/(dashboard)/draft/page.tsx`) exists. */
+  pageExists: boolean;
+  /** The `POST /api/draft` route (`src/app/api/draft/route.ts`) exists. */
+  routeExists: boolean;
+  /**
+   * Source of the surface modules (the route + its `createDraft` core), so the
+   * separation check covers them too. When provided, the surface item is `ready`
+   * only if none of these import the orchestrator or a persona.
+   */
+  surfaceSources?: string[];
+}
+
+/**
  * The readiness report: what the Draft Assistant proves offline today, and what
- * still needs a live credential or the next increment (the model-backed
- * generator; a separate `/draft` route + UI). Manual items are never auto-marked
- * done. The jury-separation item is `ready` only when the passed-in core source
- * shows no jury import.
+ * still needs a live credential. Manual items are never auto-marked done. The
+ * jury-separation item is `ready` only when the passed-in core source shows no
+ * jury import.
+ *
+ * The public `/draft` surface (Day 89) is reported from the optional `surface`
+ * evidence the caller supplies: when both the page and the route exist on disk
+ * and carry no jury coupling, the surface item is `ready`; absent that evidence
+ * it stays `manual` (the conservative default — the function never *assumes* the
+ * surface shipped, exactly as the jury-separation check never assumes the core
+ * is clean). The only remaining manual step is then the live model key.
  */
 export function buildDraftAssistantReadiness(
   coreSource: string,
   brief: DraftBrief = sampleDraftBrief(),
+  surface?: DraftSurfaceEvidence,
 ): DraftAssistantReadiness {
   const reconcile = reconcileDraftAssistant(brief);
   const juryImports = findJuryImports(coreSource);
+
+  // The surface is proven only when both files exist AND their source (if given)
+  // carries no jury coupling — the separation invariant extends to the surface.
+  const surfaceJuryImports = (surface?.surfaceSources ?? []).flatMap(findJuryImports);
+  const surfaceShipped =
+    !!surface &&
+    surface.pageExists &&
+    surface.routeExists &&
+    surfaceJuryImports.length === 0;
 
   const items: ReadinessItem[] = [
     {
@@ -240,16 +277,19 @@ export function buildDraftAssistantReadiness(
           : `COUPLED to the jury via: ${juryImports.join(", ")}`,
     },
     {
+      status: surfaceShipped ? "ready" : "manual",
+      title: "Public Draft Assistant surface (/draft route + UI)",
+      detail: surfaceShipped
+        ? "The /draft page + POST /api/draft ship (distinct from /review) and carry no jury coupling; drafts run through the offline generator with no key."
+        : surface && surfaceJuryImports.length > 0
+          ? `Surface COUPLED to the jury via: ${[...new Set(surfaceJuryImports)].join(", ")}`
+          : "Wire a separate, opt-in /draft page + endpoint (distinct from /review) so a user can request drafts; the review path stays untouched.",
+    },
+    {
       status: "manual",
       title: "Live model-backed generation",
       detail:
         "modelDraftGenerator makes one real Claude call via lib/ai/client; needs AI_API_KEY. Offline, the deterministic generator stands in.",
-    },
-    {
-      status: "manual",
-      title: "Public Draft Assistant surface (/draft route + UI)",
-      detail:
-        "Wire a separate, opt-in /draft page + endpoint (distinct from /review) so a user can request drafts; the review path stays untouched.",
     },
   ];
 

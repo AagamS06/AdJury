@@ -118,6 +118,18 @@ export const ABUSE_SURFACE_POSTURE: readonly AbuseSurfaceEntry[] = [
   { path: "api/reviews/export/route.ts", mechanisms: ["export-limiter"] },
   // GET single-review export (CSV/PDF) — export limiter.
   { path: "api/reviews/[id]/export/route.ts", mechanisms: ["export-limiter"] },
+  // POST drafts ad copy (Day 89 — Draft Assistant). Signed-in only; the brief is
+  // capped by DraftRequestSchema (bounded fields + ≤ MAX_DRAFT_VARIANTS) and the
+  // live generator makes ONE model call per request — no six-juror fan-out — so a
+  // request's cost is small and bounded by construction. A dedicated per-plan
+  // draft limiter is a reviewed, declared follow-up (offline, the deterministic
+  // generator costs nothing).
+  {
+    path: "api/draft/route.ts",
+    mechanisms: [],
+    exemptReason:
+      "Signed-in only; the request is capped by DraftRequestSchema and the live generator makes one bounded model call per request (no fan-out). A per-plan draft limiter is a documented follow-up; offline the deterministic generator has no model cost.",
+  },
   // POST starts a Stripe Checkout Session — admin-only, one Stripe call per
   // request, no model fan-out. A per-plan limiter for billing is deferred to
   // Day 75/76; until then it is a reviewed, declared exemption.

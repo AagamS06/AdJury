@@ -7,15 +7,16 @@ import {
   MAX_DRAFT_VARIANTS,
   MAX_KEY_MESSAGE_CHARS,
   MIN_DRAFT_VARIANTS,
-  buildDraftPrompt,
   checkDraftBrief,
   composeOfflineDrafts,
   generateDrafts,
-  modelDraftGenerator,
   offlineDraftGenerator,
   type DraftBrief,
   type DraftGenerator,
 } from "@/lib/draft/draft-assistant";
+// The live, model-backed generator moved to its own module in Day 89 so the pure
+// core (reachable from the /draft client form) imports no credential-bearing code.
+import { buildDraftPrompt, modelDraftGenerator } from "@/lib/draft/draft-model";
 import {
   buildDraftAssistantReadiness,
   findJuryImports,

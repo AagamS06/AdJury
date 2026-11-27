@@ -88,6 +88,10 @@ export const API_ENDPOINT_INVENTORY: readonly EndpointPosture[] = [
     methods: ["GET"],
     requiresSession: true,
   },
+  // POST drafts ad copy from a brief (Day 89 — the optional, clearly-separate
+  // Draft Assistant surface). Signed-in only; identity from the session, never
+  // the client (no tenant row is persisted — a draft is not stored).
+  { path: "api/draft/route.ts", methods: ["POST"], requiresSession: true },
   // POST starts a Stripe Checkout Session for the entry plan — admin-only (403
   // for a member), tenant identity from the session (Day 74).
   { path: "api/billing/checkout/route.ts", methods: ["POST"], requiresSession: true },

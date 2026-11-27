@@ -45,7 +45,6 @@
  * untouched, so the jury path is unchanged.
  */
 import { z } from "zod";
-import type { ModelClient } from "@/lib/ai/client";
 
 /**
  * Tone vocabulary — a small, closed set so a brief is bounded and the offline
@@ -160,6 +159,91 @@ export interface DraftResult {
   /** The standing disclaimer ({@link DRAFT_DISCLAIMER}). */
   disclaimer: string;
 }
+
+/**
+ * Boundary request schema for the public Draft Assistant surface (DailyPlan
+ * Day 89 — `POST /api/draft`). Model output is untrusted (validated by
+ * {@link AdDraftSchema}); likewise the *request* is untrusted and parsed here
+ * before any work, exactly as `ReviewRequestSchema` guards `POST /api/reviews`.
+ *
+ * This is the structural boundary — right types, closed enums, bounded fields
+ * and arrays — so a malformed or oversized payload is rejected at the edge with
+ * a plain-language message (Rules.md §6). The domain guard {@link checkDraftBrief}
+ * then applies the business rules a schema can't express (e.g. a must-avoid term
+ * that contradicts the brief's own copy). A parsed request IS a {@link DraftBrief}:
+ * `platform` defaults to `null` and the constraint lists default to empty, so the
+ * surface accepts a minimal brief without the client sending every field.
+ */
+export const DraftRequestSchema = z.object({
+  product: z
+    .string()
+    .trim()
+    .min(1, "Add the product to draft ad copy.")
+    .max(MAX_PRODUCT_CHARS, `The product must be ${MAX_PRODUCT_CHARS} characters or fewer.`),
+  audience: z
+    .string()
+    .trim()
+    .min(1, "Add the audience to draft ad copy.")
+    .max(MAX_AUDIENCE_CHARS, `The audience must be ${MAX_AUDIENCE_CHARS} characters or fewer.`),
+  keyMessage: z
+    .string()
+    .trim()
+    .min(1, "Add the key message to draft ad copy.")
+    .max(
+      MAX_KEY_MESSAGE_CHARS,
+      `The key message must be ${MAX_KEY_MESSAGE_CHARS} characters or fewer.`,
+    ),
+  tone: DraftToneSchema,
+  content_type: DraftContentTypeSchema,
+  platform: z
+    .string()
+    .trim()
+    .max(80, "The platform must be 80 characters or fewer.")
+    .nullable()
+    .default(null)
+    // Treat an empty/whitespace platform string as "not specified".
+    .transform((value) => (value && value.length > 0 ? value : null)),
+  mustInclude: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1)
+        .max(MAX_CONSTRAINT_CHARS, `Each must-include item must be ${MAX_CONSTRAINT_CHARS} characters or fewer.`),
+    )
+    .max(MAX_CONSTRAINT_ITEMS, `Provide at most ${MAX_CONSTRAINT_ITEMS} must-include items.`)
+    .default([]),
+  mustAvoid: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1)
+        .max(MAX_CONSTRAINT_CHARS, `Each must-avoid item must be ${MAX_CONSTRAINT_CHARS} characters or fewer.`),
+    )
+    .max(MAX_CONSTRAINT_ITEMS, `Provide at most ${MAX_CONSTRAINT_ITEMS} must-avoid items.`)
+    .default([]),
+  variants: z
+    .number({ invalid_type_error: `Choose between ${MIN_DRAFT_VARIANTS} and ${MAX_DRAFT_VARIANTS} draft variants.` })
+    .int()
+    .min(MIN_DRAFT_VARIANTS, `Choose at least ${MIN_DRAFT_VARIANTS} draft variant.`)
+    .max(MAX_DRAFT_VARIANTS, `Choose at most ${MAX_DRAFT_VARIANTS} draft variants.`),
+});
+
+/** A validated Draft Assistant request — structurally a {@link DraftBrief}. */
+export type DraftRequest = z.infer<typeof DraftRequestSchema>;
+
+/**
+ * Response schema for the surface, so the client can re-validate the payload
+ * before rendering it (a malformed response is surfaced as an error, never
+ * rendered as drafts) — the mirror of `ReviewResultSchema`.
+ */
+export const DraftResultSchema = z.object({
+  brief: DraftRequestSchema,
+  drafts: z.array(AdDraftSchema),
+  generator: z.string().min(1),
+  disclaimer: z.string().min(1),
+});
 
 /** Collapse whitespace runs to single spaces and trim. */
 function normalize(text: string): string {
@@ -421,84 +505,14 @@ export const offlineDraftGenerator: DraftGenerator = {
   generate: composeOfflineDrafts,
 };
 
-/** The system prompt for live, model-backed generation. */
-export const DRAFT_SYSTEM_PROMPT =
-  "You are an expert advertising copywriter drafting ad copy from a brief. You " +
-  "are NOT a reviewer or critic — you only draft. Use ONLY the facts in the " +
-  "brief; never invent statistics, prices, dates, customers, or claims. Respect " +
-  "the requested tone, content type, and platform. Include every must-include " +
-  "phrase; never use any must-avoid word. Return ONLY a JSON array of objects, " +
-  'each {"variantLabel","angle","headline","body","cta"}, one per requested ' +
-  "variant, and nothing else.";
-
-/** Assemble the user prompt for model-backed generation from a brief. */
-export function buildDraftPrompt(brief: DraftBrief): string {
-  return [
-    `Product / offer: ${normalize(brief.product)}`,
-    `Audience: ${normalize(brief.audience)}`,
-    `Key message: ${normalize(brief.keyMessage)}`,
-    `Tone: ${brief.tone}`,
-    `Content type: ${brief.content_type}`,
-    `Platform: ${brief.platform ?? "unspecified"}`,
-    `Must include: ${brief.mustInclude.length ? brief.mustInclude.map(normalize).join("; ") : "(none)"}`,
-    `Must avoid: ${brief.mustAvoid.length ? brief.mustAvoid.map(normalize).join("; ") : "(none)"}`,
-    `Number of distinct variants: ${brief.variants}`,
-  ].join("\n");
-}
-
-/** Strip accidental markdown fences and parse the first JSON array in `raw`. */
-function parseDraftJson(raw: string): unknown {
-  let text = raw.trim();
-  if (text.startsWith("```")) {
-    text = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
-  }
-  const start = text.indexOf("[");
-  const end = text.lastIndexOf("]");
-  if (start !== -1 && end !== -1 && end > start) {
-    text = text.slice(start, end + 1);
-  }
-  return JSON.parse(text);
-}
-
-/**
- * Live, model-backed generator — one call through the shared provider client
- * (Rules.md §2). Model output is untrusted: it is parsed, Zod-validated per
- * draft, clamped to the requested variant count, and any draft that slips in a
- * must-avoid term is dropped (defence in depth). A higher temperature than
- * scoring is correct here — this is *generation*, not the deterministic,
- * low-temperature *judgement* Rules.md §3 calls for.
- *
- * The offline mock cannot generate drafts (it only knows juror JSON), so this
- * refuses to run on it: use {@link offlineDraftGenerator} with no key, or set
- * `AI_API_KEY` for live generation.
- */
-export function modelDraftGenerator(
-  client: ModelClient,
-  opts: { temperature?: number } = {},
-): DraftGenerator {
-  return {
-    name: client.model,
-    async generate(brief) {
-      if (client.isMock) {
-        throw new Error(
-          "The offline mock cannot generate drafts. Use offlineDraftGenerator (no key needed), or configure AI_API_KEY for live model generation.",
-        );
-      }
-      const raw = await client.complete({
-        system: DRAFT_SYSTEM_PROMPT,
-        user: buildDraftPrompt(brief),
-        temperature: opts.temperature ?? 0.7,
-      });
-      const parsed = z.array(AdDraftSchema).parse(parseDraftJson(raw));
-      const avoid = brief.mustAvoid.map((a) => normalize(a).toLowerCase()).filter(Boolean);
-      const clean = parsed.filter((d) => {
-        const hay = `${d.headline} ${d.body} ${d.cta}`.toLowerCase();
-        return !avoid.some((term) => hay.includes(term));
-      });
-      return clean.slice(0, brief.variants);
-    },
-  };
-}
+// ── Live, model-backed generation ─────────────────────────────────────────────
+// The live generator ({@link import("./draft-model").modelDraftGenerator}) lives
+// in its own module `draft-model.ts` because it is the ONE piece that needs the
+// provider client (`lib/ai/client`). Keeping it out of this module means this
+// core imports no credential-bearing module at all, so it is safe to reach from a
+// client component (the `/draft` form) — the secrets-audit proves the client
+// bundle never pulls in `ai/client`. The prompt/parse/validate logic is in
+// `draft-model.ts`; everything here stays pure, deterministic, and offline.
 
 export type GenerateDraftsResult =
   | { ok: true; result: DraftResult }

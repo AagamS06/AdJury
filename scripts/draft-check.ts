@@ -14,7 +14,7 @@
  *
  *   npm run draft:check
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { generateDrafts } from "@/lib/draft/draft-assistant";
 import {
@@ -25,10 +25,19 @@ import {
 } from "@/lib/draft/draft-assistant-readiness";
 
 const CORE_PATH = fileURLToPath(new URL("../src/lib/draft/draft-assistant.ts", import.meta.url));
+// Day 89 — the public Draft Assistant surface: the /draft page + POST /api/draft.
+const PAGE_PATH = fileURLToPath(new URL("../src/app/(dashboard)/draft/page.tsx", import.meta.url));
+const ROUTE_PATH = fileURLToPath(new URL("../src/app/api/draft/route.ts", import.meta.url));
+const CREATE_PATH = fileURLToPath(new URL("../src/lib/draft/create-draft.ts", import.meta.url));
 
 async function main(): Promise<void> {
   const brief = sampleDraftBrief();
   const coreSource = readFileSync(CORE_PATH, "utf8");
+  const pageExists = existsSync(PAGE_PATH);
+  const routeExists = existsSync(ROUTE_PATH);
+  const surfaceSources = [ROUTE_PATH, CREATE_PATH]
+    .filter((p) => existsSync(p))
+    .map((p) => readFileSync(p, "utf8"));
 
   console.log("── AdJury Draft Assistant (offline) ─────────────────────────────────");
   console.log(
@@ -56,7 +65,11 @@ async function main(): Promise<void> {
   }
   console.log(`\n${result.disclaimer}\n`);
 
-  const readiness = buildDraftAssistantReadiness(coreSource, brief);
+  const readiness = buildDraftAssistantReadiness(coreSource, brief, {
+    pageExists,
+    routeExists,
+    surfaceSources,
+  });
   console.log("Readiness:");
   for (const item of readiness.items) {
     const mark = item.status === "ready" ? "✓ READY " : "• MANUAL";

@@ -304,6 +304,7 @@ export const ROBOTS_DISALLOW: readonly string[] = [
   "/analytics",
   "/brand",
   "/dashboard",
+  "/draft",
   "/history",
   "/invite/",
   "/login",

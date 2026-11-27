@@ -79,6 +79,15 @@ export const NAV_ITEMS: readonly NavItem[] = [
     // A saved review's detail page belongs to History in the IA.
     activePrefixes: ["/review/"],
   },
+  {
+    // The optional, clearly-separate ad-copy generator (DailyPlan Day 89; PRD
+    // §6.3) — distinct from the review workflow so the jury never grades
+    // AdJury's own drafts. Open to any member (not an admin-only surface).
+    key: "draft",
+    label: "Draft assistant",
+    href: "/draft",
+    section: "workspace",
+  },
   { key: "analytics", label: "Analytics", href: "/analytics", section: "workspace" },
   { key: "brand", label: "Brand", href: "/brand", section: "manage", adminOnly: true },
   { key: "team", label: "Team", href: "/team", section: "manage", adminOnly: true },

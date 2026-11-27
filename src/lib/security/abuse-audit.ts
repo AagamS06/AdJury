@@ -12,16 +12,19 @@
  * rate limit, and it does so through ONE shared decision mechanism so the three
  * limiters can't drift ("limits enforced consistently").
  *
- * The app has three limiters, all built on the same pure `evaluateRateLimit`
+ * The app has four limiters, all built on the same pure `evaluateRateLimit`
  * decision + `rateLimitHeaders` / `composeRateLimitMessage` response helpers and
- * (for the two that count no persisted rows) the same `SlidingWindowStore`:
+ * (for the three that count no persisted rows) the same `SlidingWindowStore`:
  *   - the REVIEW limiter   (Day 17) — `POST /api/reviews`, counts `reviews` rows;
  *   - the EXPORT limiter   (Day 40) — the two `…/export` routes, in-memory window;
- *   - the READ limiter     (Day 47) — the two JSON read routes, in-memory window.
+ *   - the READ limiter     (Day 47) — the two JSON read routes, in-memory window;
+ *   - the DRAFT limiter    (Day 90) — `POST /api/draft`, in-memory window.
  * Day 47 added the read limiter to close the real gap the audit surfaces: the
  * JSON read endpoints returned the same tenant data as their rate-limited export
  * siblings but were themselves un-limited, so a scraper could bypass the export
- * guard by hitting the JSON endpoints.
+ * guard by hitting the JSON endpoints. Day 90 promoted the per-plan draft limiter
+ * the Day-89 Draft Assistant surface had declared as a follow-up here, so the
+ * generator's one model call per request (real AI cost) is capped like the rest.
  *
  * Two pure, node-testable surfaces so the invariant is provable offline with no
  * Next request plumbing and no live database:
@@ -59,8 +62,12 @@ import { stripTsComments, type RouteSource } from "@/lib/auth/authz-audit";
 
 // ── Limiter mechanisms ───────────────────────────────────────────────────────
 
-/** The three rate limiters a cost-bearing endpoint can enforce. */
-export type AbuseMechanism = "review-limiter" | "export-limiter" | "read-limiter";
+/** The rate limiters a cost-bearing endpoint can enforce. */
+export type AbuseMechanism =
+  | "review-limiter"
+  | "export-limiter"
+  | "read-limiter"
+  | "draft-limiter";
 
 export interface AbuseMechanismSpec {
   /** The symbol whose presence in the route source proves the limiter is wired. */
@@ -87,6 +94,10 @@ export const ABUSE_MECHANISMS: Record<AbuseMechanism, AbuseMechanismSpec> = {
   "read-limiter": {
     marker: "checkReadRateLimit",
     note: "JSON read — anti-scraping/DoS burst guard on tenant data (Day 47).",
+  },
+  "draft-limiter": {
+    marker: "checkDraftRateLimit",
+    note: "POST draft — gates the Draft Assistant's one model call per request (AI cost, Day 90).",
   },
 };
 
@@ -120,16 +131,10 @@ export const ABUSE_SURFACE_POSTURE: readonly AbuseSurfaceEntry[] = [
   { path: "api/reviews/[id]/export/route.ts", mechanisms: ["export-limiter"] },
   // POST drafts ad copy (Day 89 — Draft Assistant). Signed-in only; the brief is
   // capped by DraftRequestSchema (bounded fields + ≤ MAX_DRAFT_VARIANTS) and the
-  // live generator makes ONE model call per request — no six-juror fan-out — so a
-  // request's cost is small and bounded by construction. A dedicated per-plan
-  // draft limiter is a reviewed, declared follow-up (offline, the deterministic
-  // generator costs nothing).
-  {
-    path: "api/draft/route.ts",
-    mechanisms: [],
-    exemptReason:
-      "Signed-in only; the request is capped by DraftRequestSchema and the live generator makes one bounded model call per request (no fan-out). A per-plan draft limiter is a documented follow-up; offline the deterministic generator has no model cost.",
-  },
+  // live generator makes ONE model call per request (no six-juror fan-out). Day 90
+  // promoted the per-plan draft limiter Day 89 declared as a follow-up here, so the
+  // generator's AI cost is now capped per plan like every other cost-bearing route.
+  { path: "api/draft/route.ts", mechanisms: ["draft-limiter"] },
   // POST starts a Stripe Checkout Session — admin-only, one Stripe call per
   // request, no model fan-out. A per-plan limiter for billing is deferred to
   // Day 75/76; until then it is a reviewed, declared exemption.

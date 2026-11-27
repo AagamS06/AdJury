@@ -12,14 +12,15 @@
  *
  * Two things a tier maps to:
  *
- *  1. **Limits.** AdJury already enforces three per-plan rate limits — reviews
- *     (`rate-limit.ts`, per day), exports (`export-access.ts`, per hour), and
- *     reads (`read-access.ts`, per minute). Rather than restate those numbers
- *     here (which would drift — Rules.md §7), `resolveTierLimits` **composes the
- *     very resolvers the routes call**, so the unified "what are this tier's
- *     limits" view and what the limiters actually enforce are provably the same
- *     objects (the reconcile check pins reference-equality). "Plan tier drives
- *     limits" is literally this resolver plus the three limiters it wraps.
+ *  1. **Limits.** AdJury enforces four per-plan rate limits — reviews
+ *     (`rate-limit.ts`, per day), exports (`export-access.ts`, per hour), reads
+ *     (`read-access.ts`, per minute), and drafts (`draft-rate-limit.ts`, per day
+ *     — Day 90). Rather than restate those numbers here (which would drift —
+ *     Rules.md §7), `resolveTierLimits` **composes the very resolvers the routes
+ *     call**, so the unified "what are this tier's limits" view and what the
+ *     limiters actually enforce are provably the same objects (the reconcile
+ *     check pins reference-equality). "Plan tier drives limits" is literally this
+ *     resolver plus the four limiters it wraps.
  *
  *  2. **Features.** A small, documented capability ladder (`PLAN_FEATURE_META`),
  *     each feature unlocked at a lowest tier (`unlockedBy`). The per-tier feature
@@ -49,6 +50,10 @@ import {
   READ_RATE_LIMITS,
   resolveReadRateLimitPolicy,
 } from "@/lib/reviews/read-access";
+import {
+  DRAFT_RATE_LIMITS,
+  resolveDraftRateLimitPolicy,
+} from "@/lib/draft/draft-rate-limit";
 import { buildBillingCatalog } from "@/lib/billing/plans";
 import type { PlanTier } from "@/types/db";
 
@@ -206,6 +211,8 @@ export interface TierLimits {
   export: RateLimitPolicy;
   /** Read API calls per rolling minute (`read-access.ts`). */
   read: RateLimitPolicy;
+  /** Drafts per rolling day (`draft-rate-limit.ts`, Day 90). */
+  draft: RateLimitPolicy;
 }
 
 /**
@@ -219,6 +226,7 @@ export function resolveTierLimits(
     review: resolveRateLimitPolicy(tier),
     export: resolveExportRateLimitPolicy(tier),
     read: resolveReadRateLimitPolicy(tier),
+    draft: resolveDraftRateLimitPolicy(tier),
   };
 }
 
@@ -284,11 +292,15 @@ export function reconcileTierMapping(): string[] {
     if (limits.read !== READ_RATE_LIMITS[tier]) {
       problems.push(`read limit for "${tier}" is not the READ_RATE_LIMITS policy`);
     }
+    if (limits.draft !== DRAFT_RATE_LIMITS[tier]) {
+      problems.push(`draft limit for "${tier}" is not the DRAFT_RATE_LIMITS policy`);
+    }
     // Every limit must be a positive, finite ceiling (never 0/unlimited).
     for (const [kind, policy] of [
       ["review", limits.review],
       ["export", limits.export],
       ["read", limits.read],
+      ["draft", limits.draft],
     ] as const) {
       if (!(policy.limit > 0) || !Number.isFinite(policy.limit)) {
         problems.push(`${kind} limit for "${tier}" is not a positive finite number`);
@@ -305,7 +317,7 @@ export function reconcileTierMapping(): string[] {
     const higher = PLAN_TIER_ORDER[i];
     const lo = resolveTierLimits(lower);
     const hi = resolveTierLimits(higher);
-    for (const kind of ["review", "export", "read"] as const) {
+    for (const kind of ["review", "export", "read", "draft"] as const) {
       if (hi[kind].limit < lo[kind].limit) {
         problems.push(
           `${kind} limit regresses: "${higher}" (${hi[kind].limit}) < "${lower}" (${lo[kind].limit})`,

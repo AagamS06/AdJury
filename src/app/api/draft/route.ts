@@ -4,6 +4,10 @@ import { getModelClient } from "@/lib/ai/client";
 import { createDraft } from "@/lib/draft/create-draft";
 import { offlineDraftGenerator } from "@/lib/draft/draft-assistant";
 import { modelDraftGenerator } from "@/lib/draft/draft-model";
+import {
+  checkDraftRateLimit,
+  draftRateLimitHeaders,
+} from "@/lib/draft/draft-rate-limit";
 
 /**
  * POST /api/draft (DailyPlan Day 89) — the public Draft Assistant surface.
@@ -37,6 +41,20 @@ export async function POST(request: Request): Promise<Response> {
   // Resolve the session server-side; treat any failure (e.g. missing Supabase
   // env) as "not signed in" so the endpoint fails closed rather than crashing.
   const session = await getSessionContext().catch(() => null);
+
+  // Day 90: per-plan draft rate limit, enforced before any generation (a live
+  // draft is one real model call — AI cost, Rules.md §1). Only meaningful for an
+  // authenticated caller — an anon request falls through to createDraft's 401
+  // below, so no company's slot is consumed for it.
+  if (session) {
+    const limited = checkDraftRateLimit({ session });
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: limited.error, ...limited.rateLimit },
+        { status: 429, headers: draftRateLimitHeaders(limited.rateLimit) },
+      );
+    }
+  }
 
   // Pick the generator: live model when a key is set, otherwise the offline
   // deterministic generator. Built lazily after the handler starts so the choice

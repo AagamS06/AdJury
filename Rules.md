@@ -117,7 +117,7 @@ Handle errors at the layer that can do something useful; surface a clear message
 
 - Every phase ships with at least the tests named in [Phases.md](Phases.md).
 - **Contract test** (`tests/schema.test.ts`): juror output always validates against the Zod schema.
-- **End-to-end test** (`tests/e2e-review.test.ts`): sample content → 5 jurors → valid aggregate JSON.
+- **End-to-end test** (`tests/e2e-review.test.ts`): sample content → 6 jurors → valid aggregate JSON.
 - Test the scoring/verdict logic in isolation (pure function, easy to assert).
 - Don't mock away the schema validation — that's the contract we're protecting.
 

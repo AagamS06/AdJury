@@ -10,7 +10,7 @@
 | Phase | Weeks | Theme | Outcome |
 |---|---|---|---|
 | **1** | 1–2 | Foundation & personas | Rubrics, prompts, JSON schema, stack, DB schema, auth, e2e test |
-| **2** | 3–5 | Core review engine | Submit → 5 jurors → scorecard → history, in the UI |
+| **2** | 3–5 | Core review engine | Submit → 6 jurors → scorecard → history, in the UI |
 | **3** | 6–8 | Multi-tenant & dashboard | Teams/roles, brand upload, analytics, export, cost controls |
 | **4** | 9–10 | UI/UX polish | Landing page, full brand pass, responsive/a11y, user testing |
 | **5** | 11–12 | Billing, deploy, launch | Stripe scaffold, pricing, deploy, portfolio writeup, demo, outreach |

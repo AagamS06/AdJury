@@ -52,6 +52,28 @@ import { PERSONAS } from "@/lib/ai/personas";
  */
 export const JUROR_COUNT: number = PERSONAS.length;
 
+/**
+ * The machine name of the one *insider* juror — the Business Analyst (Day 23b),
+ * which gives a business/market read rather than a craft-of-copy read. It is the
+ * single juror the roster adds on top of the original craft jurors.
+ */
+export const BUSINESS_ANALYST_PERSONA = "business_analyst" as const;
+
+/**
+ * The size of the *craft* juror subset — every juror except the insider Business
+ * Analyst — derived from the real roster so it tracks the jury automatically.
+ *
+ * Prose sometimes decomposes the jury honestly as "the {@link CRAFT_JUROR_COUNT}
+ * craft jurors plus the Business Analyst" (the source roster comment and
+ * Architecture.md both do). That statement is correct, not drift, so the core
+ * docs audit (`findDocJurorCountDrift`) checks a "N craft jurors" claim against
+ * this number while a plain "N jurors" claim is checked against {@link
+ * JUROR_COUNT}.
+ */
+export const CRAFT_JUROR_COUNT: number = PERSONAS.filter(
+  (p) => p.name !== BUSINESS_ANALYST_PERSONA,
+).length;
+
 /** Cardinal number-words 0–20, for stating small counts in prose. */
 export const NUMBER_WORDS: readonly string[] = [
   "zero",

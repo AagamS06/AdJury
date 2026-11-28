@@ -28,7 +28,7 @@ Today this is done by ad-hoc human review, if at all. It is inconsistent, slow, 
 ## 3. Goals & Non-Goals
 
 ### Goals
-- Deliver **5 distinct, sometimes-disagreeing** critiques from a single cost-efficient AI model.
+- Deliver **6 distinct, sometimes-disagreeing** critiques from a single cost-efficient AI model.
 - Return a **consistent, structured, storable** result for every review (see §7 JSON schema).
 - Be **multi-tenant** and **role-aware** from day one (companies → teams → users).
 - Keep **AI cost low** via single-model + multi-prompt, brand-voice caching, and per-tier rate limits.
@@ -124,7 +124,7 @@ Per-juror rubric detail (what a 1 vs a 10 looks like on each lens) is maintained
 
 ## 7. Output Contract (JSON schema)
 
-All five personas return objects conforming to a single schema so results store and render consistently. Canonical schema:
+All six personas return objects conforming to a single schema so results store and render consistently. Canonical schema:
 
 ```json
 {
@@ -169,7 +169,7 @@ See **[Architecture.md](Architecture.md)** for how this maps to the `reviews` / 
 
 | Metric | Target (first pass) |
 |---|---|
-| End-to-end review latency | < 15s for all 5 jurors |
+| End-to-end review latency | < 15s for all 6 jurors |
 | Cost per review | < $0.01 (single small model, cached brand voice) |
 | Schema-valid juror responses | > 98% (after 1 retry) |
 | Reviews per active company / week | ≥ 5 (engagement signal) |

@@ -50,7 +50,7 @@ Scoring anchors (apply to your lens):
  * contract (PRD.md §7) but the personas previously gave the model no guidance on
  * when to use each level, so it was reported inconsistently. Report how sure you
  * are of the SCORE, independent of how good the content is — a low score can be
- * high-confidence. Keeps confidence comparable across the five jurors.
+ * high-confidence. Keeps confidence comparable across the six jurors.
  */
 export const CONFIDENCE_GUIDANCE = `
 Confidence guidance (how sure you are of THIS score, not how good the content is):

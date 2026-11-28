@@ -35,12 +35,12 @@ Chosen for a **solo developer** who wants one cohesive, well-documented stack wi
 └────┬─────┘                      └─────────┬─────────┘
      │                                       │ 1. authz (Supabase session + role)
      │                                       │ 2. load brand_profile (+ cached embedding)
-     │                                       │ 3. build 5 persona prompts
+     │                                       │ 3. build 6 persona prompts
      │                                       ▼
      │                             ┌───────────────────┐
-     │                             │  AI Orchestrator  │  ── fan-out 5 calls (parallel) ─►  [ AI model ]
-     │                             │  (single model,   │  ◄─ 5 structured JSON responses ──
-     │                             │   5 system prompts)│
+     │                             │  AI Orchestrator  │  ── fan-out 6 calls (parallel) ─►  [ AI model ]
+     │                             │  (single model,   │  ◄─ 6 structured JSON responses ──
+     │                             │   6 system prompts)│
      │                             └─────────┬─────────┘
      │                                       │ 4. validate each juror vs Zod schema (retry once)
      │                                       │ 5. compute aggregate + verdict
@@ -54,11 +54,11 @@ Chosen for a **solo developer** who wants one cohesive, well-documented stack wi
 **Steps**
 1. **Auth check** — Supabase session; resolve `company_id` and `role`; enforce plan rate limit.
 2. **Load brand context** — fetch `brand_profiles` row for the company; reuse cached embedding rather than reprocessing the style guide.
-3. **Prompt assembly** — inject content + brand context into each of the 5 persona system prompts.
+3. **Prompt assembly** — inject content + brand context into each of the 6 persona system prompts.
 4. **Fan-out** — call the model 6× (in parallel) via the AI orchestrator. Single provider, six prompts. For an image ad the creative is attached to each call as a vision block.
 5. **Validate** — each response is parsed and validated against the juror JSON schema (Zod). One retry on failure; otherwise mark that juror `error` and continue.
 6. **Aggregate** — compute weighted mean + verdict (compliance can veto → `fail`).
-7. **Persist** — write one `reviews` row + five `persona_scores` rows.
+7. **Persist** — write one `reviews` row + six `persona_scores` rows.
 8. **Render** — return the composed scorecard JSON; the client renders it.
 
 ---
@@ -177,13 +177,14 @@ AdJury/
 │   ├── lib/
 │   │   ├── ai/
 │   │   │   ├── client.ts     # provider-abstracted model client
-│   │   │   ├── orchestrator.ts # fan-out 5 jurors, validate, aggregate
+│   │   │   ├── orchestrator.ts # fan-out 6 jurors, validate, aggregate
 │   │   │   └── personas/     # one file per juror: system prompt + rubric
 │   │   │       ├── brand-voice.ts
 │   │   │       ├── compliance.ts
 │   │   │       ├── audience-fit.ts
 │   │   │       ├── seo.ts
-│   │   │       └── stop-scrolling.ts
+│   │   │       ├── stop-scrolling.ts
+│   │   │       └── business-analyst.ts
 │   │   ├── db/
 │   │   │   ├── supabase.ts   # server + browser clients
 │   │   │   └── queries.ts    # typed data access
@@ -196,7 +197,7 @@ AdJury/
 │   └── styles/               # globals.css, design tokens
 │
 └── tests/
-    ├── e2e-review.test.ts    # Phase-1 end-to-end: content in → 5 jurors → JSON out
+    ├── e2e-review.test.ts    # Phase-1 end-to-end: content in → 6 jurors → JSON out
     └── schema.test.ts        # contract validation
 ```
 

@@ -73,7 +73,7 @@ export interface ReadmeFinding {
 }
 
 /** 1-based line number of a character offset within `text`. */
-function lineAt(text: string, index: number): number {
+export function lineAt(text: string, index: number): number {
   let line = 1;
   for (let i = 0; i < index && i < text.length; i++) {
     if (text[i] === "\n") line += 1;
@@ -125,10 +125,23 @@ function parseCount(token: string): number | null {
   return i >= 0 ? i : null;
 }
 
-/** All recognized juror-count statements, as `{ index, stated }`. */
-function jurorCountStatements(
-  md: string,
-): { index: number; stated: number; match: string }[] {
+/** A single recognized juror-count statement in a markdown document. */
+export interface JurorCountStatement {
+  /** Character offset of the match within the (original) document. */
+  index: number;
+  /** The integer the statement asserts (e.g. 6 for "six jurors"). */
+  stated: number;
+  /** The exact matched text, e.g. "five craft jurors". */
+  match: string;
+}
+
+/**
+ * All recognized juror-count statements in `md`, HTML comments ignored. This is
+ * the single definition of "a statement of how many jurors AdJury runs" — the
+ * README audit and the core-docs audit (`doc-audit.ts`) both read it, so there
+ * is one regex to keep honest, not two drifting copies (Rules.md §7).
+ */
+export function jurorCountStatements(md: string): JurorCountStatement[] {
   const clean = stripHtmlComments(md);
   const out: { index: number; stated: number; match: string }[] = [];
   const seen = new Set<number>();

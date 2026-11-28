@@ -120,16 +120,42 @@ item by `buildDraftAssistantReadiness`:
    in, so the whole surface — form, endpoint, and rendered drafts — is fully
    exercisable without a credential.
 
-### Follow-up (a reviewed scope decision, not a blocker)
+## Rate limiting (Day 90)
 
-- **A per-plan draft rate limit.** `POST /api/draft` is signed-in only, its
-  request is capped by `DraftRequestSchema`, and the live generator makes one
-  bounded model call per request (no six-juror fan-out), so a request's cost is
-  small by construction. A dedicated per-plan draft limiter (like the review /
-  export / read limiters) is a declared follow-up — recorded in the Day-47 abuse
-  surface inventory as a reviewed exemption, never a silent gap. Offline, the
-  deterministic generator has no model cost.
+`POST /api/draft` enforces a **per-plan draft rate limit** before any generation.
+A live draft is one real model call (AI cost, Rules.md §1), so the endpoint is
+capped like every other cost-bearing route — the follow-up the Day-89 surface had
+declared in the Day-47 abuse inventory is now shipped, so "limits enforced
+consistently" (the Day-47 DoD) holds for the generator too.
+
+- The limiter (`src/lib/draft/draft-rate-limit.ts`) mirrors the review / export /
+  read limiters over the **same** shared primitives — `evaluateRateLimit`,
+  `rateLimitHeaders` / `composeRateLimitMessage`, and the generic
+  `SlidingWindowStore` — so the four limiters are provably one mechanism, not four
+  drifting copies (Rules.md §7). The abuse audit pins that `api/draft/route.ts`
+  wires it (`checkDraftRateLimit`), and `resolveTierLimits` (entitlements) composes
+  its resolver, so the unified "what a tier grants" view includes the draft limit
+  by reference.
+- It is a **daily** AI-cost window (a draft is one model call, like a review is
+  six), with ceilings `free: 20 / pro: 200 / enterprise: 2000` per 24 hours —
+  modestly above the review ceilings (a draft costs less than a six-call review)
+  while staying bounded and non-decreasing with tier. A blocked request returns
+  `429` with the shared `X-RateLimit-*` / `Retry-After` headers and a
+  plain-language message, and consumes no slot. It fails closed to `free` for an
+  unknown/missing tier.
+- Like the export/read stores it is **best-effort** — per-instance and in-memory,
+  so it resets on a cold start and throttles a burst against one running instance
+  rather than enforcing a hard global quota. A durable backend (Redis / a Postgres
+  events table) is the production upgrade, a one-line swap behind
+  `SlidingWindowStore` with no route edits (see the note below).
+
+### Needs infra (the production upgrade, not a blocker here)
+
+- **A durable rate-limit backend.** The draft limiter shares the best-effort
+  in-memory `SlidingWindowStore` the export/read limiters use. Swapping in a
+  durable store for a hard global quota across instances is the documented
+  production upgrade, injected behind `SlidingWindowStore` with no route changes.
 
 ---
 
-_Related: [PRD.md](../PRD.md) §6.3 · [Rules.md](../Rules.md) §1/§3 · [DailyPlan.md](../DailyPlan.md) Day 87 & 89 · `src/lib/draft/draft-assistant.ts` · `src/lib/draft/draft-model.ts` · `src/app/api/draft/route.ts`_
+_Related: [PRD.md](../PRD.md) §6.3 · [Rules.md](../Rules.md) §1/§3 · [DailyPlan.md](../DailyPlan.md) Day 87, 89 & 90 · `src/lib/draft/draft-assistant.ts` · `src/lib/draft/draft-model.ts` · `src/lib/draft/draft-rate-limit.ts` · `src/app/api/draft/route.ts`_

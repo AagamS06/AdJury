@@ -23,6 +23,10 @@ import {
   READ_RATE_LIMITS,
   resolveReadRateLimitPolicy,
 } from "@/lib/reviews/read-access";
+import {
+  DRAFT_RATE_LIMITS,
+  resolveDraftRateLimitPolicy,
+} from "@/lib/draft/draft-rate-limit";
 import type { PlanTier } from "@/types/db";
 
 /**
@@ -61,10 +65,12 @@ describe("resolveTierLimits — plan tier drives the SAME limits the routes enfo
       expect(limits.review).toBe(PLAN_RATE_LIMITS[tier]);
       expect(limits.export).toBe(EXPORT_RATE_LIMITS[tier]);
       expect(limits.read).toBe(READ_RATE_LIMITS[tier]);
+      expect(limits.draft).toBe(DRAFT_RATE_LIMITS[tier]);
       // ...and equal to what each route's resolver returns.
       expect(limits.review).toBe(resolveRateLimitPolicy(tier));
       expect(limits.export).toBe(resolveExportRateLimitPolicy(tier));
       expect(limits.read).toBe(resolveReadRateLimitPolicy(tier));
+      expect(limits.draft).toBe(resolveDraftRateLimitPolicy(tier));
     }
   });
 
@@ -73,14 +79,16 @@ describe("resolveTierLimits — plan tier drives the SAME limits the routes enfo
     expect(unknown.review).toBe(PLAN_RATE_LIMITS.free);
     expect(unknown.export).toBe(EXPORT_RATE_LIMITS.free);
     expect(unknown.read).toBe(READ_RATE_LIMITS.free);
+    expect(unknown.draft).toBe(DRAFT_RATE_LIMITS.free);
     expect(resolveTierLimits(null).review).toBe(PLAN_RATE_LIMITS.free);
     expect(resolveTierLimits(undefined).read).toBe(READ_RATE_LIMITS.free);
+    expect(resolveTierLimits(null).draft).toBe(DRAFT_RATE_LIMITS.free);
   });
 
   it("every tier's limits are positive, finite ceilings over a positive window", () => {
     for (const tier of TIERS) {
       const limits = resolveTierLimits(tier);
-      for (const policy of [limits.review, limits.export, limits.read]) {
+      for (const policy of [limits.review, limits.export, limits.read, limits.draft]) {
         expect(policy.limit).toBeGreaterThan(0);
         expect(Number.isFinite(policy.limit)).toBe(true);
         expect(policy.windowMs).toBeGreaterThan(0);

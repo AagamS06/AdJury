@@ -28,6 +28,12 @@ import {
   resolveReadRateLimitPolicy,
   type ReadRateStore,
 } from "@/lib/reviews/read-access";
+import {
+  checkDraftRateLimit,
+  createInMemoryDraftRateStore,
+  DRAFT_RATE_LIMITS,
+  resolveDraftRateLimitPolicy,
+} from "@/lib/draft/draft-rate-limit";
 import type { CompanyRow, PlanTier } from "@/types/db";
 import type { SessionContext } from "@/lib/auth/session";
 
@@ -131,6 +137,19 @@ describe("abuse audit — /api route source", () => {
     expect(ABUSE_MECHANISMS["review-limiter"].marker).toBe("getRateUsage");
     expect(ABUSE_MECHANISMS["export-limiter"].marker).toBe("checkExportRateLimit");
     expect(ABUSE_MECHANISMS["read-limiter"].marker).toBe("checkReadRateLimit");
+    expect(ABUSE_MECHANISMS["draft-limiter"].marker).toBe("checkDraftRateLimit");
+  });
+
+  it("the Draft Assistant endpoint enforces the draft limiter (Day 90, no longer exempt)", () => {
+    const entry = abusePostureFor("api/draft/route.ts")!;
+    expect(entry.mechanisms).toEqual(["draft-limiter"]);
+    expect(entry.exemptReason).toBeUndefined();
+    const audit = auditAbuseSurface(routes).find(
+      (a) => a.path === "api/draft/route.ts",
+    )!;
+    expect(audit.presentMechanisms).toEqual(["draft-limiter"]);
+    expect(audit.missingMechanisms).toEqual([]);
+    expect(audit.exempt).toBe(false);
   });
 });
 
@@ -150,15 +169,34 @@ function makeSession(companyId: string, plan: PlanTier): SessionContext {
 }
 
 describe("abuse audit — limiters enforced consistently", () => {
-  it("all three limiter policies fail closed to free for an unknown plan", () => {
+  it("all four limiter policies fail closed to free for an unknown plan", () => {
     const bogus = "legacy" as PlanTier;
     expect(resolveRateLimitPolicy(bogus)).toEqual(PLAN_RATE_LIMITS.free);
     expect(resolveExportRateLimitPolicy(bogus)).toEqual(EXPORT_RATE_LIMITS.free);
     expect(resolveReadRateLimitPolicy(bogus)).toEqual(READ_RATE_LIMITS.free);
+    expect(resolveDraftRateLimitPolicy(bogus)).toEqual(DRAFT_RATE_LIMITS.free);
     // ...and for a missing plan.
     expect(resolveRateLimitPolicy(null)).toEqual(PLAN_RATE_LIMITS.free);
     expect(resolveExportRateLimitPolicy(null)).toEqual(EXPORT_RATE_LIMITS.free);
     expect(resolveReadRateLimitPolicy(null)).toEqual(READ_RATE_LIMITS.free);
+    expect(resolveDraftRateLimitPolicy(null)).toEqual(DRAFT_RATE_LIMITS.free);
+  });
+
+  it("the draft limiter blocks at the limit and consumes no slot when blocked", () => {
+    const now = new Date("2026-11-27T12:00:00.000Z");
+    const store = createInMemoryDraftRateStore();
+    for (let i = 0; i < DRAFT_RATE_LIMITS.free.limit; i += 1) {
+      store.record("co", now.getTime() - 1000);
+    }
+    const res = checkDraftRateLimit({ session: makeSession("co", "free"), now, store });
+    expect(res.ok).toBe(false);
+    if (res.ok) throw new Error("expected blocked");
+    expect(res.rateLimit.allowed).toBe(false);
+    expect(res.rateLimit.remaining).toBe(0);
+    // The blocked attempt was not recorded — still exactly at the limit.
+    expect(store.peek("co", now.getTime() - DRAFT_RATE_LIMITS.free.windowMs).count).toBe(
+      DRAFT_RATE_LIMITS.free.limit,
+    );
   });
 
   it("read + export limiters resolve through the same evaluateRateLimit decision", () => {
